@@ -207,7 +207,7 @@ const ReportsPageContent = () => {
             <Button
                 id="date"
                 variant={"outline"}
-                className={cn("w-[260px] justify-start text-left font-normal", !dateRange && "text-muted-foreground")}
+                className={cn("w-full sm:w-[260px] justify-start text-left font-normal", !dateRange && "text-muted-foreground")}
             >
                 <CalendarIcon className="mr-2 h-4 w-4" />
                 {dateRange?.from ? (
@@ -344,10 +344,12 @@ const ReportsPageContent = () => {
         <Card>
             <CardHeader>
                 <CardTitle>Vendas Detalhadas</CardTitle>
-                <CardDescription>
-                    Exibindo {tableData.length} vendas para o período selecionado.
-                </CardDescription>
-                <Input placeholder="Buscar por responsável..." className="max-w-sm" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <CardDescription>
+                      Exibindo {tableData.length} vendas para o período selecionado.
+                  </CardDescription>
+                  <Input placeholder="Buscar por responsável..." className="w-full sm:max-w-sm" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+                </div>
             </CardHeader>
             <CardContent>
                 <div className="rounded-md border">

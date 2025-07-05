@@ -60,7 +60,7 @@ export default function ProductsSettingsPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [toast]);
 
   useEffect(() => {
     fetchProducts();
@@ -129,16 +129,16 @@ export default function ProductsSettingsPage() {
             <CardDescription>Gerencie os produtos vendidos no seu estabelecimento.</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center justify-between gap-4 mb-4">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-4">
               <Input 
                 placeholder="Filtrar produtos..." 
-                className="max-w-sm"
+                className="max-w-sm w-full"
                 value={filter}
                 onChange={(e) => setFilter(e.target.value)}
               />
               <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
                 <DialogTrigger asChild>
-                  <Button onClick={openNewDialog}><PlusCircle className="mr-2 h-4 w-4"/>Adicionar Produto</Button>
+                  <Button onClick={openNewDialog} className="w-full sm:w-auto"><PlusCircle className="mr-2 h-4 w-4"/>Adicionar Produto</Button>
                 </DialogTrigger>
                 <DialogContent onOpenAutoFocus={(e) => e.preventDefault()} onPointerDownOutside={(e) => { if (e.target instanceof HTMLElement && e.closest('[role="alertdialog"]')) { e.preventDefault() } else { closeDialog() }}} onEscapeKeyDown={closeDialog}>
                   <DialogHeader>

@@ -11,7 +11,7 @@ import Link from 'next/link';
 export default function ActiveChildrenPage() {
   return (
     <MainLayout>
-      <div className="flex-1 space-y-4 p-8 pt-6">
+      <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
         <BlurFade delay={0.15}>
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
             <div>

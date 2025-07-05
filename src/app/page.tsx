@@ -152,7 +152,7 @@ export default function HomePage() {
 
   return (
     <MainLayout>
-      <div className="flex-1 space-y-8 p-8 pt-6">
+      <div className="flex-1 space-y-8 p-4 md:p-8 pt-6">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between space-y-4 md:space-y-0">
           <BlurFade delay={0.15}>
             <div>
@@ -163,7 +163,7 @@ export default function HomePage() {
           <BlurFade delay={0.25}>
             <div className="flex flex-col items-end gap-2 w-full md:w-auto">
                <Link href="/new-session">
-                <Button className="bg-green-600 hover:bg-green-700 text-white">
+                <Button className="bg-green-600 hover:bg-green-700 text-white w-full">
                   <PlusCircle className="mr-2 h-4 w-4" />
                   Novo Atendimento
                 </Button>
@@ -196,13 +196,13 @@ export default function HomePage() {
 
         <BlurFade delay={0.55}>
           <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
+              <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                   <div>
                   <CardTitle className="font-headline">Crianças Ativas Agora</CardTitle>
                   <CardDescription>Atendimentos ordenados pelo menor tempo restante.</CardDescription>
                   </div>
-                  <Link href="/active-children">
-                  <Button className="bg-accent text-accent-foreground hover:bg-accent/90 shrink-0">
+                  <Link href="/active-children" className="w-full sm:w-auto">
+                  <Button className="bg-accent text-accent-foreground hover:bg-accent/90 shrink-0 w-full">
                       Gerenciar Atendimentos
                       <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
