@@ -47,7 +47,7 @@ export function ConsumptionModal({ session, isOpen, onClose }: ConsumptionModalP
             }
         }
         fetchProducts();
-    }, [isOpen]);
+    }, [isOpen, toast]);
 
     useEffect(() => {
         if (session) {
@@ -136,12 +136,13 @@ export function ConsumptionModal({ session, isOpen, onClose }: ConsumptionModalP
             <DialogContent className="max-w-4xl h-[80vh] flex flex-col p-0" onPointerDownOutside={(e) => isSaving && e.preventDefault()}>
                 <DialogHeader className="p-6 pb-0">
                     <DialogTitle className="font-headline text-2xl">Gerenciar Consumo</DialogTitle>
-                    <DialogDescription>
-                        Adicione ou remova produtos da comanda de <span className="font-semibold text-foreground">{session?.responsible}</span>.
+                    <DialogDescription className="flex flex-wrap items-baseline gap-x-1">
+                        <span>Adicione ou remova produtos da comanda de</span>
+                        <span className="font-semibold text-foreground">{session?.responsible}.</span>
                     </DialogDescription>
                 </DialogHeader>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 px-6 min-h-0 flex-grow">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 px-6 min-h-0 flex-grow overflow-hidden">
                     {/* Left Panel: Product List */}
                     <div className="flex flex-col border rounded-lg">
                         <div className="p-4 border-b">
@@ -174,11 +175,11 @@ export function ConsumptionModal({ session, isOpen, onClose }: ConsumptionModalP
                                             product.stock > 0 ? "hover:bg-muted" : "opacity-50 cursor-not-allowed"
                                         )}
                                     >
-                                        <div>
-                                            <p className="font-medium">{product.name}</p>
+                                        <div className="flex-grow min-w-0 pr-2">
+                                            <p className="font-medium truncate">{product.name}</p>
                                             <p className="text-xs text-muted-foreground">Estoque: {product.stock}</p>
                                         </div>
-                                        <p className="font-semibold">{formatCurrency(product.price)}</p>
+                                        <p className="font-semibold shrink-0">{formatCurrency(product.price)}</p>
                                     </button>
                                 ))}
                             </div>
@@ -199,8 +200,8 @@ export function ConsumptionModal({ session, isOpen, onClose }: ConsumptionModalP
                                 </div>
                             ) : comanda.map(item => (
                                 <div key={item.productId} className="flex items-center gap-4 bg-background p-2 rounded-md shadow-sm">
-                                    <div className="flex-grow">
-                                        <p className="font-medium">{item.name}</p>
+                                    <div className="flex-grow min-w-0">
+                                        <p className="font-medium truncate">{item.name}</p>
                                         <p className="text-sm font-mono">{formatCurrency(item.price * item.quantity)}</p>
                                     </div>
                                     <div className="flex items-center gap-2 border rounded-md">
