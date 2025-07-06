@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Users, AlertCircle, CheckCircle, Timer, ShoppingCart, History, ClipboardList, Plus, Minus, CircleDashed, XCircle, LogOut, Search, Loader2 } from 'lucide-react';
+import { Users, AlertCircle, CheckCircle, Timer, ShoppingCart, History, ClipboardList, Plus, Minus, CircleDashed, XCircle, LogOut, Search, Loader2, Sun } from 'lucide-react';
 import { Progress } from '../ui/progress';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '../ui/tooltip';
 import {
@@ -113,6 +113,21 @@ function SessionCard({ session, settings, onAddTime, onOpenConsumption, onOpenSu
   const maxTimeInSeconds = maxTimeInMinutes * 60;
 
   const calculateState = useCallback(() => {
+    if (session.isFullAfternoon) {
+        return {
+            formattedTime: "Tarde Toda",
+            progressPercentage: 100,
+            progressColorClass: 'bg-gradient-to-r from-blue-400 to-blue-600',
+            buttonColorClass: 'bg-green-600 hover:bg-green-700 text-white',
+            textColorClass: 'text-blue-600',
+            icon: <Sun className="h-5 w-5 mr-2" />,
+            timeLabel: 'Período Contratado',
+            buttonText: 'Acertar Conta',
+            hasBalance: !session.isInitialPaymentMade || (consumption && consumption.length > 0),
+            isTimeUp: false,
+        };
+    }
+
     const now = Date.now();
     const elapsedSeconds = Math.floor((now - startTime) / 1000);
     const remainingSeconds = maxTimeInSeconds - elapsedSeconds;
@@ -172,7 +187,7 @@ function SessionCard({ session, settings, onAddTime, onOpenConsumption, onOpenSu
         hasBalance,
         isTimeUp,
     };
-  }, [startTime, maxTimeInSeconds, consumption, session.isInitialPaymentMade]);
+  }, [session, startTime, maxTimeInSeconds, consumption]);
 
   const [timerState, setTimerState] = useState(calculateState());
 
@@ -317,13 +332,13 @@ function SessionCard({ session, settings, onAddTime, onOpenConsumption, onOpenSu
             <Dialog open={isAddTimeOpen} onOpenChange={setIsAddTimeOpen}>
               <Tooltip>
                   <TooltipTrigger asChild>
-                     <Button variant="ghost" size="icon" onClick={openDialog}>
+                     <Button variant="ghost" size="icon" onClick={openDialog} disabled={session.isFullAfternoon}>
                         <Timer className="h-5 w-5" />
                         <span className="sr-only">Adicionar Tempo</span>
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
-                      <p>Adicionar Tempo</p>
+                      {session.isFullAfternoon ? <p>Não é possível adicionar tempo</p> : <p>Adicionar Tempo</p>}
                   </TooltipContent>
               </Tooltip>
               <DialogContent className="sm:max-w-[425px]">
@@ -484,6 +499,7 @@ export function ActiveSessions() {
   
   const sortedAndFilteredSessions = useMemo(() => {
     const calculateRemainingTime = (session: ActiveSession) => {
+        if (session.isFullAfternoon) return Infinity; // Put full afternoon sessions at the end
         const endTime = session.startTime + session.maxTime * 60 * 1000;
         return endTime - Date.now();
     };
