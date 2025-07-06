@@ -40,11 +40,11 @@ function CloseSessionDialog({ session, onSessionClosed }: { session: ActiveSessi
 
     const handleClose = async (isError: boolean) => {
         try {
-            await deleteActiveSession(session.id);
+            await deleteActiveSession(session.id, isError);
             onSessionClosed(session.id);
             toast({
                 title: 'Atendimento Encerrado',
-                description: `O atendimento de ${session.responsible} foi ${isError ? 'cancelado' : 'encerrado'}.`,
+                description: `O atendimento de ${session.responsible} foi ${isError ? 'cancelado com devolução de estoque' : 'encerrado'}.`,
             });
         } catch (error) {
             toast({
