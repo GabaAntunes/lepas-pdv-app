@@ -1,7 +1,6 @@
-
 "use client";
 
-import * as React from 'react';
+import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
@@ -11,82 +10,98 @@ import {
   Settings,
   Menu,
 } from 'lucide-react';
-
-import {
-  SidebarProvider,
-  Sidebar,
-  SidebarHeader,
-  SidebarContent,
-  SidebarMenu,
-  SidebarMenuItem,
-  SidebarMenuButton,
-  SidebarInset,
-  SidebarTrigger,
-} from '@/components/ui/sidebar';
 import { Logo } from '@/components/Logo';
 import { UserNav } from './UserNav';
-import { Button } from './ui/button';
-import { ThemeToggle } from './theme/ThemeToggle';
 import { NotificationBell } from './NotificationBell';
+import { ThemeToggle } from './theme/ThemeToggle';
+import { Button } from './ui/button';
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+} from "@/components/ui/sheet"
 
 const navItems = [
-  { href: '/', label: 'Início', icon: LayoutDashboard },
-  { href: '/active-children', label: 'Crianças', icon: Users },
-  { href: '/reports', label: 'Relatórios', icon: LineChart },
-  { href: '/settings', label: 'Configurações', icon: Settings },
+  { href: '/', label: 'Início', icon: <LayoutDashboard className="h-5 w-5 shrink-0" /> },
+  { href: '/active-children', label: 'Crianças', icon: <Users className="h-5 w-5 shrink-0" /> },
+  { href: '/reports', label: 'Relatórios', icon: <LineChart className="h-5 w-5 shrink-0" /> },
+  { href: '/settings', label: 'Configurações', icon: <Settings className="h-5 w-5 shrink-0" /> },
 ];
 
 export function MainLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   return (
-    <SidebarProvider>
-      <div className="flex min-h-screen w-full bg-muted/40">
-        <Sidebar className="hidden lg:block" collapsible="icon">
-          <SidebarHeader>
-            <Logo />
-          </SidebarHeader>
-          <SidebarContent>
-            <SidebarMenu>
-              {navItems.map((item) => (
-                <SidebarMenuItem key={item.href}>
-                  <Link href={item.href} passHref>
-                    <SidebarMenuButton
-                      isActive={pathname === item.href}
-                      className="w-full justify-start"
-                      tooltip={item.label}
-                    >
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.label}</span>
-                    </SidebarMenuButton>
-                  </Link>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarContent>
-        </Sidebar>
-        <div className="flex flex-col sm:gap-4 sm:py-4 flex-1">
-          <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background px-4 sm:static sm:h-auto sm:border-0 sm:bg-transparent sm:px-6">
-            <SidebarTrigger asChild className="lg:hidden">
-              <Button size="icon" variant="outline">
-                <Menu className="h-5 w-5" />
-                <span className="sr-only">Toggle Menu</span>
-              </Button>
-            </SidebarTrigger>
-            <div className="flex-1">
-              {/* Header content like breadcrumbs can go here */}
-            </div>
-            <div className="flex items-center gap-2">
-              <NotificationBell />
-              <ThemeToggle />
-              <UserNav />
-            </div>
-          </header>
-          <main className="flex-1" key={pathname}>
-            {children}
-          </main>
+    <div className="flex min-h-screen w-full flex-col bg-muted/40 font-body">
+      {/* Header for both Mobile and Desktop */}
+      <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-background/95 px-4 backdrop-blur-sm sm:px-6">
+        <div className="flex items-center gap-4">
+          <Logo />
         </div>
-      </div>
-    </SidebarProvider>
+        
+        {/* Desktop Navigation */}
+        <nav className="hidden flex-1 items-center justify-center md:flex">
+            <div className="inline-flex items-center gap-6 text-sm font-medium">
+                {navItems.map((item) => (
+                    <Link
+                        key={item.label}
+                        href={item.href}
+                        data-active={pathname === item.href}
+                        className="flex items-center gap-2 text-muted-foreground transition-colors hover:text-foreground data-[active=true]:text-primary data-[active=true]:font-semibold"
+                    >
+                    {item.icon}
+                    {item.label}
+                    </Link>
+                ))}
+            </div>
+        </nav>
+        
+        {/* Right side controls (Desktop) */}
+        <div className="hidden items-center gap-2 md:flex">
+            <NotificationBell />
+            <ThemeToggle />
+            <UserNav />
+        </div>
+
+        {/* Mobile Menu */}
+        <div className="md:hidden">
+            <Sheet>
+                <SheetTrigger asChild>
+                <Button variant="outline" size="icon">
+                    <Menu className="h-5 w-5" />
+                    <span className="sr-only">Abrir menu</span>
+                </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="flex flex-col">
+                    <Logo />
+                    <nav className="grid gap-4 text-lg font-medium mt-8 flex-1">
+                        {navItems.map((item) => (
+                            <Link
+                                key={item.label}
+                                href={item.href}
+                                data-active={pathname === item.href}
+                                className="flex items-center gap-4 rounded-lg px-3 py-2 text-muted-foreground transition-colors hover:text-primary data-[active=true]:bg-muted data-[active=true]:text-primary"
+                            >
+                            {item.icon}
+                            {item.label}
+                            </Link>
+                        ))}
+                    </nav>
+                     <div className="mt-auto flex items-center justify-between rounded-lg border p-3">
+                        <UserNav />
+                        <div className='flex items-center gap-2'>
+                            <NotificationBell />
+                            <ThemeToggle />
+                        </div>
+                    </div>
+                </SheetContent>
+            </Sheet>
+        </div>
+      </header>
+      
+      <main className="flex-1" key={pathname}>
+        {children}
+      </main>
+    </div>
   );
 }
