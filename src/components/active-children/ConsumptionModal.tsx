@@ -144,7 +144,7 @@ export function ConsumptionModal({ session, isOpen, onClose }: ConsumptionModalP
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 px-6 min-h-0 flex-grow overflow-hidden">
                     {/* Left Panel: Product List */}
-                    <div className="flex flex-col border rounded-lg">
+                    <div className="flex flex-col border rounded-lg overflow-hidden">
                         <div className="p-4 border-b">
                             <div className="relative">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -187,7 +187,7 @@ export function ConsumptionModal({ session, isOpen, onClose }: ConsumptionModalP
                     </div>
 
                     {/* Right Panel: Current Order */}
-                    <div className="flex flex-col border rounded-lg bg-muted/30">
+                    <div className="flex flex-col border rounded-lg bg-muted/30 overflow-hidden">
                         <div className="p-4 border-b">
                             <h3 className="font-semibold text-lg flex items-center gap-2"><ShoppingBag className="h-5 w-5"/>Comanda Atual</h3>
                         </div>
