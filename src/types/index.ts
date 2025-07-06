@@ -33,6 +33,7 @@ export interface ActiveSession {
   children: string[];
   startTime: number; // JS Timestamp
   maxTime: number; // in minutes
+  isFullAfternoon?: boolean;
   consumption: ConsumptionItem[];
   couponCode?: string;
   couponId?: string; // Store the ID for easier updates
@@ -69,6 +70,7 @@ export interface Settings {
   id?: string;
   firstHourRate: number;
   additionalHourRate: number;
+  fullAfternoonRate: number;
   logoUrl?: string;
 }
 
