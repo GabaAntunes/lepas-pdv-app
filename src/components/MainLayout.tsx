@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from 'react';
@@ -26,6 +27,7 @@ import { Logo } from '@/components/Logo';
 import { UserNav } from './UserNav';
 import { Button } from './ui/button';
 import { ThemeToggle } from './theme/ThemeToggle';
+import { NotificationBell } from './NotificationBell';
 
 const navItems = [
   { href: '/', label: 'Início', icon: LayoutDashboard },
@@ -75,6 +77,7 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
               {/* Header content like breadcrumbs can go here */}
             </div>
             <div className="flex items-center gap-2">
+              <NotificationBell />
               <ThemeToggle />
               <UserNav />
             </div>
