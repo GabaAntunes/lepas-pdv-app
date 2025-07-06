@@ -1,7 +1,7 @@
 
 import { db, isFirebaseConfigured } from '@/lib/firebase';
 import type { Product } from '@/types';
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, DocumentData, QueryDocumentSnapshot, query, orderBy } from 'firebase/firestore';
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, DocumentData, QueryDocumentSnapshot, query, orderBy, increment } from 'firebase/firestore';
 
 const docToProduct = (doc: QueryDocumentSnapshot<DocumentData>): Product => {
     const data = doc.data();
@@ -38,4 +38,12 @@ export const deleteProduct = async (id: string) => {
     if (!isFirebaseConfigured || !db) return;
     const productDoc = doc(db, 'products', id);
     await deleteDoc(productDoc);
+};
+
+export const updateProductStock = async (productId: string, quantityChange: number) => {
+    if (!isFirebaseConfigured || !db) {
+        throw new Error("Firebase is not configured.");
+    }
+    const productDoc = doc(db, 'products', productId);
+    await updateDoc(productDoc, { stock: increment(quantityChange) });
 };
