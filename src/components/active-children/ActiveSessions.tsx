@@ -118,7 +118,7 @@ function SessionCard({ session, settings, onAddTime, onOpenConsumption, onOpenSu
             formattedTime: "Tarde Toda",
             progressPercentage: 100,
             progressColorClass: 'bg-gradient-to-r from-blue-400 to-blue-600',
-            buttonColorClass: 'bg-green-600 hover:bg-green-700 text-white',
+            buttonColorClass: 'bg-gradient-to-r from-blue-500 to-sky-600 text-white',
             textColorClass: 'text-blue-600',
             icon: <Sun className="h-5 w-5 mr-2" />,
             timeLabel: 'Período Contratado',
@@ -150,7 +150,7 @@ function SessionCard({ session, settings, onAddTime, onOpenConsumption, onOpenSu
     const hasBalance = !session.isInitialPaymentMade || hasConsumption || isTimeUp;
 
     let progressColorClass = 'bg-gradient-to-r from-green-400 to-green-600';
-    let buttonColorClass = 'bg-green-600 hover:bg-green-700 text-white';
+    let buttonColorClass = 'bg-gradient-to-r from-green-500 to-teal-500 text-white';
     let textColorClass = 'text-green-600';
     let icon = <CheckCircle className="h-5 w-5 mr-2" />;
     let timeLabel = 'Tempo restante';
@@ -158,19 +158,19 @@ function SessionCard({ session, settings, onAddTime, onOpenConsumption, onOpenSu
 
     if (isTimeUp) {
         progressColorClass = 'bg-gradient-to-r from-orange-500 to-red-600';
-        buttonColorClass = 'bg-red-600 hover:bg-red-700 text-white';
+        buttonColorClass = 'bg-gradient-to-r from-orange-500 to-red-600 text-white';
         textColorClass = 'text-red-600';
         icon = <AlertCircle className="h-5 w-5 mr-2" />;
         timeLabel = 'Tempo Esgotado';
         buttonText = 'Acertar Conta (Atrasado)';
     } else if (progressPercentage <= 20) {
         progressColorClass = 'bg-gradient-to-r from-orange-500 to-red-600';
-        buttonColorClass = 'bg-red-600 hover:bg-red-700 text-white';
+        buttonColorClass = 'bg-gradient-to-r from-orange-500 to-red-600 text-white';
         textColorClass = 'text-red-600';
         icon = <AlertCircle className="h-5 w-5 mr-2" />;
     } else if (progressPercentage <= 50) {
         progressColorClass = 'bg-gradient-to-r from-yellow-400 to-orange-500';
-        buttonColorClass = 'bg-yellow-500 hover:bg-yellow-600 text-white';
+        buttonColorClass = 'bg-gradient-to-r from-yellow-400 to-orange-500 text-white';
         textColorClass = 'text-yellow-600';
         icon = <AlertCircle className="h-5 w-5 mr-2" />;
     }
