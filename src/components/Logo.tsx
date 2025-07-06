@@ -1,13 +1,25 @@
+"use client";
 import Image from 'next/image';
+import Link from 'next/link';
 
-interface LogoProps {
-  size?: number;
-}
-
-export function Logo({ size = 32 }: LogoProps) {
+export const Logo = () => {
   return (
-    <div className="flex items-center gap-2 group-data-[collapsible=icon]:justify-center">
-      <Image src="/logo.png" alt="LEPA'S Logo" width={size} height={size} className="text-primary" />
-    </div>
+    <Link
+      href="/"
+      className="relative z-20 flex items-center justify-center py-1"
+    >
+      <Image src="/logo.png" alt="LEPA'S Logo" width={84} height={84} />
+    </Link>
   );
-}
+};
+
+export const LogoIcon = () => {
+  return (
+    <Link
+      href="/"
+      className="relative z-20 flex items-center justify-center py-1"
+    >
+      <Image src="/logo.png" alt="LEPA'S Logo" width={28} height={28} />
+    </Link>
+  );
+};
