@@ -13,6 +13,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Product } from "@/types";
@@ -30,6 +31,7 @@ const formSchema = z.object({
   name: z.string().min(2, { message: "O nome deve ter pelo menos 2 caracteres." }),
   price: z.coerce.number().positive({ message: "O preço deve ser um número positivo." }),
   stock: z.coerce.number().int().min(0, { message: "O estoque não pode ser negativo." }),
+  minStock: z.coerce.number().int().min(0, { message: "O estoque mínimo não pode ser negativo." }).optional(),
 });
 
 export type ProductFormValues = z.infer<typeof formSchema>;
@@ -50,10 +52,12 @@ export function ProductForm({ initialData, onSubmit, onCancel }: ProductFormProp
       name: initialData.name,
       price: initialData.price,
       stock: initialData.stock,
+      minStock: initialData.minStock || 0,
     } : {
       name: "",
       price: 0,
       stock: 0,
+      minStock: 0,
     },
   });
 
@@ -105,19 +109,35 @@ export function ProductForm({ initialData, onSubmit, onCancel }: ProductFormProp
             </FormItem>
           )}
         />
-        <FormField
-          control={form.control}
-          name="stock"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Estoque</FormLabel>
-              <FormControl>
-                <Input type="number" step="1" placeholder="100" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        <div className="grid grid-cols-2 gap-4">
+            <FormField
+            control={form.control}
+            name="stock"
+            render={({ field }) => (
+                <FormItem>
+                <FormLabel>Estoque Atual</FormLabel>
+                <FormControl>
+                    <Input type="number" step="1" placeholder="100" {...field} />
+                </FormControl>
+                <FormMessage />
+                </FormItem>
+            )}
+            />
+             <FormField
+            control={form.control}
+            name="minStock"
+            render={({ field }) => (
+                <FormItem>
+                <FormLabel>Estoque Mínimo</FormLabel>
+                <FormControl>
+                    <Input type="number" step="1" placeholder="10" {...field} />
+                </FormControl>
+                <FormDescription className="text-xs">Receba um alerta quando o estoque atingir este valor.</FormDescription>
+                <FormMessage />
+                </FormItem>
+            )}
+            />
+        </div>
         <div className="flex justify-end gap-2 pt-4">
             <Button type="button" variant="outline" onClick={onCancel} disabled={loading}>
                 Cancelar
