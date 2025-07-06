@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from '@/lib/utils';
 import { Progress } from "@/components/ui/progress";
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
-import { CheckCircle, AlertTriangle } from 'lucide-react';
+import { CheckCircle, AlertTriangle, Sun } from 'lucide-react';
 
 interface ActiveSessionRowProps {
     session: ActiveSession;
@@ -24,6 +24,18 @@ export function ActiveSessionRow({ session }: ActiveSessionRowProps) {
     });
 
     useEffect(() => {
+        if (session.isFullAfternoon) {
+            setTimerState({
+                remainingTimeText: 'Tarde Toda',
+                isTimeUp: false,
+                progress: 100,
+                statusColor: 'text-blue-600',
+                progressColor: 'bg-blue-500',
+                Icon: Sun,
+            });
+            return;
+        }
+
         const calculateState = () => {
             const now = Date.now();
             const elapsedSeconds = Math.floor((now - session.startTime) / 1000);
@@ -68,7 +80,7 @@ export function ActiveSessionRow({ session }: ActiveSessionRowProps) {
         calculateState();
         const timer = setInterval(calculateState, 1000);
         return () => clearInterval(timer);
-    }, [session.startTime, session.maxTime]);
+    }, [session]);
 
     return (
         <TooltipProvider>
