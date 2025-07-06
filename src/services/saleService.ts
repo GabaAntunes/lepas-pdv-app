@@ -25,8 +25,6 @@ export const finalizeSale = async (
   const batch = writeBatch(db);
 
   try {
-    const hasConsumption = Array.isArray(session.consumption) && session.consumption.length > 0;
-    
     // 1. Create Sale Record in 'vendas' collection
     if (paymentDetails.totalAmount > 0 || !closeSession) {
       const saleRecordRef = doc(collection(db, 'vendas'));
@@ -49,27 +47,21 @@ export const finalizeSale = async (
       batch.set(saleRecordRef, saleRecord);
     }
 
-    // 2. Update product stock (only if there's consumption)
-    if (hasConsumption) {
-      for (const item of session.consumption) {
-        const productRef = doc(db, 'products', item.productId);
-        batch.update(productRef, { stock: increment(-item.quantity) });
-      }
-    }
+    // NOTE: Product stock is now updated in real-time via the ConsumptionModal.
+    // The stock update logic has been removed from this function to avoid double-counting.
     
-    // 3. Increment coupon usage count if a coupon was applied for the first time
+    // 2. Increment coupon usage count if a coupon was applied for the first time
     if (paymentDetails.couponId && !session.isCouponUsageCounted) {
         const couponRef = doc(db, 'coupons', paymentDetails.couponId);
         batch.update(couponRef, { uses: increment(1) });
     }
 
-    // 4. Either delete the active session or update it for continuation
+    // 3. Either delete the active session or update it for continuation
     const activeSessionRef = doc(db, 'atendimentos_ativos', session.id);
     if (closeSession) {
       batch.delete(activeSessionRef);
     } else {
       // Settle the bill but keep the session active.
-      // Crucially, we DO NOT clear the discountApplied value, as it's valid for the whole session.
       const updateData: any = {
         consumption: [], // Clear consumption as it's been paid
         maxTime: Math.max(session.maxTime, Math.round(paymentDetails.durationInMinutes)),
@@ -77,7 +69,6 @@ export const finalizeSale = async (
         totalPaidSoFar: increment(paymentDetails.totalAmount),
       };
 
-      // Only mark coupon as counted if it was used in this transaction and hasn't been counted before
       if (paymentDetails.couponId && !session.isCouponUsageCounted) {
         updateData.isCouponUsageCounted = true;
       }
