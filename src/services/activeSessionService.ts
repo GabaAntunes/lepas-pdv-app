@@ -1,7 +1,7 @@
 
 import { db, isFirebaseConfigured } from '@/lib/firebase';
 import type { ActiveSession, ConsumptionItem } from '@/types';
-import { collection, onSnapshot, updateDoc, doc, Unsubscribe, query, orderBy, Timestamp, addDoc, getDoc, deleteDoc } from 'firebase/firestore';
+import { collection, onSnapshot, updateDoc, doc, Unsubscribe, query, orderBy, Timestamp, addDoc, getDoc, deleteDoc, writeBatch, increment } from 'firebase/firestore';
 
 export const listenToActiveSessions = (
   callback: (sessions: ActiveSession[]) => void,
@@ -134,10 +134,35 @@ export const getActiveSessionById = async (sessionId: string): Promise<ActiveSes
     } as ActiveSession;
 };
 
-export const deleteActiveSession = async (sessionId: string) => {
+export const deleteActiveSession = async (sessionId: string, isCancellation: boolean = false) => {
     if (!isFirebaseConfigured || !db) {
         throw new Error("Firebase is not configured.");
     }
+    
     const sessionDocRef = doc(db, 'atendimentos_ativos', sessionId);
-    await deleteDoc(sessionDocRef);
-}
+
+    if (isCancellation) {
+        // If it's a cancellation (error), return consumed items to stock
+        const batch = writeBatch(db);
+        const sessionSnap = await getDoc(sessionDocRef);
+
+        if (sessionSnap.exists()) {
+            const consumption = sessionSnap.data().consumption as ConsumptionItem[];
+            if (consumption && consumption.length > 0) {
+                for (const item of consumption) {
+                    const productRef = doc(db, 'products', item.productId);
+                    // Return items to stock by incrementing the quantity
+                    batch.update(productRef, { stock: increment(item.quantity) });
+                }
+            }
+        }
+        
+        // Delete the session document as part of the same batch
+        batch.delete(sessionDocRef);
+        await batch.commit();
+
+    } else {
+        // Normal deletion without stock return (e.g., child left normally but without payment)
+        await deleteDoc(sessionDocRef);
+    }
+};
