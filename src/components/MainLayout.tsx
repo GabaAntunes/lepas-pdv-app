@@ -34,7 +34,7 @@ export function MainLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen w-full flex-col bg-muted/40 font-body">
       {/* Header for both Mobile and Desktop */}
-      <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-background/95 px-4 backdrop-blur-sm sm:px-6">
+      <header className="sticky top-0 z-30 flex h-24 items-center justify-between border-b bg-background/95 px-4 backdrop-blur-sm sm:px-6">
         <div className="flex items-center gap-4">
           <Logo />
         </div>
