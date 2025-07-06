@@ -9,6 +9,7 @@ export const getSettings = async (): Promise<Settings> => {
     const defaultSettings: Settings = {
         firstHourRate: 30.00,
         additionalHourRate: 15.00,
+        fullAfternoonRate: 50.00,
         logoUrl: '',
     };
 
