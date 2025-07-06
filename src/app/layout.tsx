@@ -4,6 +4,7 @@ import './globals.css';
 import { AuthProvider } from '@/components/auth/AuthProvider';
 import { Toaster } from '@/components/ui/toaster';
 import { ThemeProvider } from '@/components/theme/ThemeProvider';
+import { NotificationProvider } from '@/contexts/NotificationContext';
 
 export const metadata: Metadata = {
   title: "LEPA'S PDV",
@@ -32,8 +33,10 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <AuthProvider>
-            {children}
-            <Toaster />
+            <NotificationProvider>
+              {children}
+              <Toaster />
+            </NotificationProvider>
           </AuthProvider>
         </ThemeProvider>
       </body>
