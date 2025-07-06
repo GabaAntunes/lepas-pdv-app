@@ -4,6 +4,7 @@ export interface Product {
   name: string;
   price: number;
   stock: number;
+  minStock?: number;
 }
 
 export interface ConsumptionItem {
@@ -97,4 +98,13 @@ export interface CashSession {
   expectedCashAmount?: number;
   difference?: number;
   finalCashSales?: number;
+}
+
+export interface AppNotification {
+  id: string;
+  type: 'stock';
+  message: string;
+  entityId: string; // The product ID
+  createdAt: number; // JS Timestamp
+  link: string;
 }
