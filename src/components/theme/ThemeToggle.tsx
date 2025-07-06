@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -16,7 +17,7 @@ export function ThemeToggle() {
 
   if (!mounted) {
     // Return a placeholder or null to avoid hydration mismatch.
-    return <Button variant="outline" size="icon" disabled={true} />
+    return <Button variant="ghost" size="icon" disabled={true} />
   }
 
   const toggleTheme = () => {
@@ -25,7 +26,7 @@ export function ThemeToggle() {
 
   return (
     <Button
-      variant="outline"
+      variant="ghost"
       size="icon"
       onClick={toggleTheme}
       className="relative overflow-hidden"
