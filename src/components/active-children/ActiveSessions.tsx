@@ -14,6 +14,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from '@/components/ui/dialog';
 import { Label } from '../ui/label';
 import { useToast } from '@/hooks/use-toast';
@@ -99,6 +100,7 @@ interface SessionCardProps {
 
 function SessionCard({ session, settings, onAddTime, onOpenConsumption, onOpenSummary, onOpenHistory, onSessionClosed, isHighlighted = false }: SessionCardProps) {
   const [isAddTimeOpen, setIsAddTimeOpen] = useState(false);
+  const [isInfoOpen, setIsInfoOpen] = useState(false);
   const [hoursToAdd, setHoursToAdd] = useState(1);
   const valorHoraAdicional = settings.additionalHourRate;
 
@@ -264,10 +266,35 @@ function SessionCard({ session, settings, onAddTime, onOpenConsumption, onOpenSu
       <CardHeader>
         <div className="flex justify-between items-start">
             <div className="flex-grow pr-2">
-                <CardTitle className="font-headline flex items-center gap-2">
-                    <Users className="h-5 w-5 text-primary" />
-                    {session.responsible}
-                </CardTitle>
+                <Dialog open={isInfoOpen} onOpenChange={setIsInfoOpen}>
+                  <DialogTrigger asChild>
+                    <CardTitle className="font-headline flex items-center gap-2 cursor-pointer hover:underline">
+                        <Users className="h-5 w-5 text-primary" />
+                        {session.responsible}
+                    </CardTitle>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[425px]">
+                      <DialogHeader>
+                          <DialogTitle>Informações do Responsável</DialogTitle>
+                          <DialogDescription>
+                              Dados de contato de {session.responsible}.
+                          </DialogDescription>
+                      </DialogHeader>
+                      <div className="py-4 space-y-4">
+                          <div className="space-y-1">
+                              <Label htmlFor="cpf">CPF</Label>
+                              <Input id="cpf" value={session.responsibleCpf} readOnly />
+                          </div>
+                          <div className="space-y-1">
+                              <Label htmlFor="phone">Telefone</Label>
+                              <Input id="phone" value={session.responsiblePhone || 'Não informado'} readOnly />
+                          </div>
+                      </div>
+                      <DialogFooter>
+                          <Button onClick={() => setIsInfoOpen(false)}>Fechar</Button>
+                      </DialogFooter>
+                  </DialogContent>
+                </Dialog>
                 <CardDescription>{session.children.join(', ')}</CardDescription>
             </div>
             <CloseSessionDialog session={session} onSessionClosed={onSessionClosed} />
