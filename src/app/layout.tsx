@@ -9,9 +9,6 @@ import { NotificationProvider } from '@/contexts/NotificationContext';
 export const metadata: Metadata = {
   title: "Lepas Parque",
   description: "Sistema de Ponto de Venda para o parque infantil LEPA'S",
-  icons: {
-    icon: '/logo.png',
-  },
 };
 
 export default function RootLayout({
