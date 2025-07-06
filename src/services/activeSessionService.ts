@@ -3,6 +3,32 @@ import { db, isFirebaseConfigured } from '@/lib/firebase';
 import type { ActiveSession, ConsumptionItem } from '@/types';
 import { collection, onSnapshot, updateDoc, doc, Unsubscribe, query, orderBy, Timestamp, addDoc, getDoc, deleteDoc, writeBatch, increment } from 'firebase/firestore';
 
+const docToActiveSession = (doc: QueryDocumentSnapshot<DocumentData> | DocumentSnapshot<DocumentData>): ActiveSession => {
+    const data = doc.data();
+    if (!data) throw new Error("Document data is undefined for docToActiveSession.");
+
+    const startTimeMillis = data.startTime instanceof Timestamp ? data.startTime.toMillis() : data.startTime;
+
+    return {
+        id: doc.id,
+        responsible: data.responsible || 'N/A',
+        responsibleCpf: data.responsibleCpf || '',
+        responsiblePhone: data.responsiblePhone || '',
+        children: data.children || [],
+        startTime: startTimeMillis,
+        maxTime: data.maxTime || 60,
+        isFullAfternoon: data.isFullAfternoon ?? false,
+        consumption: data.consumption || [],
+        couponCode: data.couponCode,
+        couponId: data.couponId,
+        discountApplied: data.discountApplied,
+        isInitialPaymentMade: data.isInitialPaymentMade ?? false,
+        totalPaidSoFar: data.totalPaidSoFar || 0,
+        isCouponUsageCounted: data.isCouponUsageCounted ?? false,
+    } as ActiveSession;
+};
+
+
 export const listenToActiveSessions = (
   callback: (sessions: ActiveSession[]) => void,
   onError: (error: Error) => void
@@ -17,27 +43,7 @@ export const listenToActiveSessions = (
     const q = query(sessionsCollectionRef, orderBy("startTime", "asc"));
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
-        const sessions = snapshot.docs.map(doc => {
-            const data = doc.data();
-            const startTimeMillis = data.startTime instanceof Timestamp ? data.startTime.toMillis() : data.startTime;
-
-            return {
-                id: doc.id,
-                responsible: data.responsible || 'N/A',
-                responsibleCpf: data.responsibleCpf || '',
-                responsiblePhone: data.responsiblePhone || '',
-                children: data.children || [],
-                startTime: startTimeMillis,
-                maxTime: data.maxTime || 60,
-                consumption: data.consumption || [],
-                couponCode: data.couponCode,
-                couponId: data.couponId,
-                discountApplied: data.discountApplied,
-                isInitialPaymentMade: data.isInitialPaymentMade ?? false,
-                totalPaidSoFar: data.totalPaidSoFar || 0,
-                isCouponUsageCounted: data.isCouponUsageCounted ?? false,
-            } as ActiveSession;
-        });
+        const sessions = snapshot.docs.map(docToActiveSession);
         callback(sessions);
     }, (error) => {
         console.error("Error listening to active sessions:", error);
@@ -53,6 +59,7 @@ export const addActiveSession = async (sessionData: {
     responsiblePhone?: string;
     children: string[];
     maxTime: number;
+    isFullAfternoon?: boolean;
     couponCode?: string;
     discountApplied?: number;
     couponId?: string;
@@ -68,6 +75,7 @@ export const addActiveSession = async (sessionData: {
       isInitialPaymentMade: false,
       totalPaidSoFar: 0,
       isCouponUsageCounted: false,
+      isFullAfternoon: sessionData.isFullAfternoon ?? false,
     }
 
     if(sessionData.couponCode) dataToAdd.couponCode = sessionData.couponCode;
@@ -113,25 +121,7 @@ export const getActiveSessionById = async (sessionId: string): Promise<ActiveSes
         return null;
     }
     
-    const data = docSnap.data();
-    const startTimeMillis = data.startTime instanceof Timestamp ? data.startTime.toMillis() : data.startTime;
-
-    return {
-        id: docSnap.id,
-        responsible: data.responsible || 'N/A',
-        responsibleCpf: data.responsibleCpf || '',
-        responsiblePhone: data.responsiblePhone || '',
-        children: data.children || [],
-        startTime: startTimeMillis,
-        maxTime: data.maxTime || 60,
-        consumption: data.consumption || [],
-        couponCode: data.couponCode,
-        couponId: data.couponId,
-        discountApplied: data.discountApplied,
-        isInitialPaymentMade: data.isInitialPaymentMade ?? false,
-        totalPaidSoFar: data.totalPaidSoFar || 0,
-        isCouponUsageCounted: data.isCouponUsageCounted ?? false,
-    } as ActiveSession;
+    return docToActiveSession(docSnap);
 };
 
 export const deleteActiveSession = async (sessionId: string, isCancellation: boolean = false) => {
