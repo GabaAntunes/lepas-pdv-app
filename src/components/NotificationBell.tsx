@@ -16,10 +16,20 @@ import { useRouter } from "next/navigation";
 import { ScrollArea } from "./ui/scroll-area";
 import { cn } from "@/lib/utils";
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "./ui/tooltip";
+import { AnimatePresence, motion } from "framer-motion";
+import { useEffect } from "react";
 
 export function NotificationBell() {
-  const { notifications, deleteNotification, deleteAllNotifications } = useNotifications();
+  const { notifications, deleteNotification, deleteAllNotifications, hasNewNotification, setHasNewNotification } = useNotifications();
   const router = useRouter();
+
+  useEffect(() => {
+    if(hasNewNotification) {
+      // Reset the animation trigger after a short delay
+      const timer = setTimeout(() => setHasNewNotification(false), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [hasNewNotification, setHasNewNotification]);
 
   const handleNotificationClick = (link: string, id: string) => {
     router.push(link);
@@ -27,17 +37,37 @@ export function NotificationBell() {
   };
 
   const hasNotifications = notifications.length > 0;
+  const bellAnimation = {
+    rest: { rotate: 0 },
+    shake: { rotate: [0, -15, 10, -10, 5, -5, 0], transition: { duration: 0.5 } }
+  };
+
+  const badgeAnimation = {
+      initial: { scale: 0, opacity: 0 },
+      animate: { scale: 1, opacity: 1, transition: { type: "spring", stiffness: 500, damping: 30 } },
+      exit: { scale: 0, opacity: 0 }
+  };
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="outline" size="icon" className="relative">
-          <Bell className="h-[1.2rem] w-[1.2rem]" />
+          <motion.div animate={hasNewNotification ? "shake" : "rest"} variants={bellAnimation}>
+            <Bell className="h-[1.2rem] w-[1.2rem]" />
+          </motion.div>
+          <AnimatePresence>
           {hasNotifications && (
-            <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-xs font-bold text-destructive-foreground">
+            <motion.span
+              variants={badgeAnimation}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-destructive text-xs font-bold text-destructive-foreground"
+            >
               {notifications.length}
-            </span>
+            </motion.span>
           )}
+          </AnimatePresence>
           <span className="sr-only">Toggle notifications</span>
         </Button>
       </DropdownMenuTrigger>
