@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { MoreHorizontal, PlusCircle } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { Product } from "@/types";
 import { addProduct, deleteProduct, getProducts, updateProduct } from "@/services/productService";
 import {
@@ -32,6 +32,8 @@ import { ProductForm, ProductFormValues } from "@/components/settings/ProductFor
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { SettingsHeader } from "@/components/settings/SettingsHeader";
+import { useSearchParams, useRouter } from "next/navigation";
+import { cn } from "@/lib/utils";
 
 const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -44,6 +46,11 @@ export default function ProductsSettingsPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | undefined>(undefined);
   const { toast } = useToast();
+
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const highlightedId = searchParams.get('highlight');
+  const rowRefs = useRef<Map<string, HTMLTableRowElement | null>>(new Map());
 
   const fetchProducts = useCallback(async () => {
     setLoading(true);
@@ -65,6 +72,19 @@ export default function ProductsSettingsPage() {
   useEffect(() => {
     fetchProducts();
   }, [fetchProducts]);
+
+  useEffect(() => {
+    if (highlightedId && rowRefs.current.has(highlightedId) && !loading) {
+        const rowElement = rowRefs.current.get(highlightedId);
+        rowElement?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        
+        const timer = setTimeout(() => {
+            router.replace('/settings/products', { scroll: false });
+        }, 3000);
+
+        return () => clearTimeout(timer);
+    }
+  }, [highlightedId, loading, router]);
 
   const handleFormSubmit = async (values: ProductFormValues) => {
     try {
@@ -159,6 +179,7 @@ export default function ProductsSettingsPage() {
                     <TableHead>Nome</TableHead>
                     <TableHead>Preço</TableHead>
                     <TableHead>Estoque</TableHead>
+                    <TableHead>Estoque Mínimo</TableHead>
                     <TableHead><span className="sr-only">Ações</span></TableHead>
                   </TableRow>
                 </TableHeader>
@@ -169,15 +190,21 @@ export default function ProductsSettingsPage() {
                         <TableCell><Skeleton className="h-4 w-[150px]" /></TableCell>
                         <TableCell><Skeleton className="h-4 w-[80px]" /></TableCell>
                         <TableCell><Skeleton className="h-4 w-[50px]" /></TableCell>
+                        <TableCell><Skeleton className="h-4 w-[50px]" /></TableCell>
                         <TableCell><Skeleton className="h-8 w-8 rounded-full" /></TableCell>
                       </TableRow>
                     ))
                   ) : filteredProducts.length > 0 ? (
                     filteredProducts.map((product) => (
-                      <TableRow key={product.id}>
+                      <TableRow 
+                        key={product.id}
+                        ref={(el) => rowRefs.current.set(product.id, el)}
+                        className={cn(product.id === highlightedId && "ring-2 ring-primary ring-offset-background bg-primary/10 transition-all duration-300")}
+                      >
                         <TableCell className="font-medium">{product.name}</TableCell>
                         <TableCell>{formatCurrency(product.price)}</TableCell>
-                        <TableCell>{product.stock}</TableCell>
+                        <TableCell className={cn((product.minStock && product.stock <= product.minStock) ? 'text-destructive font-bold' : '')}>{product.stock}</TableCell>
+                        <TableCell>{product.minStock || 'N/A'}</TableCell>
                         <TableCell>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -218,7 +245,7 @@ export default function ProductsSettingsPage() {
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={4} className="text-center h-24">
+                      <TableCell colSpan={5} className="text-center h-24">
                         Nenhum produto encontrado.
                       </TableCell>
                     </TableRow>
