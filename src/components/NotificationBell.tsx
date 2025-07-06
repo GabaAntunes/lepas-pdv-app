@@ -51,7 +51,7 @@ export function NotificationBell() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="icon" className="relative">
+        <Button variant="ghost" size="icon" className="relative">
           <motion.div animate={hasNewNotification ? "shake" : "rest"} variants={bellAnimation}>
             <Bell className="h-[1.2rem] w-[1.2rem]" />
           </motion.div>
