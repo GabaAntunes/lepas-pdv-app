@@ -7,7 +7,7 @@ import { ThemeProvider } from '@/components/theme/ThemeProvider';
 import { NotificationProvider } from '@/contexts/NotificationContext';
 
 export const metadata: Metadata = {
-  title: "LEPA'S PDV",
+  title: "Lepas Parque",
   description: "Sistema de Ponto de Venda para o parque infantil LEPA'S",
 };
 
