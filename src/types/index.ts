@@ -104,9 +104,9 @@ export interface CashSession {
 
 export interface AppNotification {
   id: string;
-  type: 'stock';
+  type: 'stock' | 'timeUp';
   message: string;
-  entityId: string; // The product ID
+  entityId: string; // The product ID or session ID
   createdAt: number; // JS Timestamp
   link: string;
 }
