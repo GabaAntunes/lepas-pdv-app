@@ -1,6 +1,6 @@
 
 import { db, isFirebaseConfigured } from '@/lib/firebase';
-import type { AppNotification, Product } from '@/types';
+import type { AppNotification, Product, ActiveSession } from '@/types';
 import { collection, onSnapshot, query, orderBy, Timestamp, addDoc, getDocs, where, Unsubscribe, deleteDoc, doc, writeBatch } from 'firebase/firestore';
 
 const notificationsCollectionRef = collection(db, 'notifications');
@@ -54,6 +54,26 @@ export const addStockNotification = async (product: Product) => {
         link: `/settings/products?highlight=${product.id}`
     };
     await addDoc(notificationsCollectionRef, newNotification);
+};
+
+export const addTimeUpNotification = async (session: ActiveSession) => {
+    if (!isFirebaseConfigured || !db) throw new Error("Firebase is not configured.");
+
+    const q = query(notificationsCollectionRef, where("entityId", "==", session.id), where("type", "==", "timeUp"));
+    const existing = await getDocs(q);
+    if (!existing.empty) {
+        return; // Notification for this session already exists
+    }
+
+    const newNotification: Omit<AppNotification, 'id'> = {
+        type: 'timeUp',
+        message: `O tempo para ${session.responsible} (${session.children.join(", ")}) acabou.`,
+        entityId: session.id,
+        createdAt: Timestamp.now(),
+        link: `/active-children?highlight=${session.id}`
+    };
+
+    await addDoc(notificationsCollectionRef, newNotification as any);
 };
 
 
