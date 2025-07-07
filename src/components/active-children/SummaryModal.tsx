@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
@@ -5,7 +6,7 @@ import { Button } from "../ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../ui/dialog";
 import { Separator } from "../ui/separator";
 import { ActiveSession, Settings } from "@/types";
-import { Clock, Loader2, ShoppingCart, Tag } from "lucide-react";
+import { Clock, Loader2, ShoppingCart, Sun, Tag } from "lucide-react";
 import { ScrollArea } from "../ui/scroll-area";
 
 const formatCurrency = (value: number) => {
@@ -31,33 +32,49 @@ export function SummaryModal({ session, isOpen, onClose, settings }: SummaryModa
     const summary = useMemo(() => {
         if (!session || !settings) return null;
 
-        // Elapsed time calculation
+        // If it's a full afternoon session
+        if (session.isFullAfternoon) {
+            const timeCost = settings.fullAfternoonRate * session.children.length;
+            const consumptionCost = session.consumption.reduce((acc, item) => acc + item.price * item.quantity, 0);
+            const subtotal = timeCost + consumptionCost;
+            const discount = session.discountApplied || 0;
+            const total = Math.max(0, subtotal - discount);
+
+            return {
+                isFullAfternoon: true,
+                timeCost,
+                consumptionCost,
+                subtotal,
+                discount,
+                total,
+                childrenCount: session.children.length,
+                formattedElapsedTime: 'N/A', // Placeholder
+                formattedContractedTime: 'Tarde Toda', // Placeholder
+                hoursToCharge: 0, // Placeholder
+                firstHourTotalCost: 0, // Placeholder
+                additionalHours: 0, // Placeholder
+                additionalHoursTotalCost: 0, // Placeholder
+            };
+        }
+
+        // Original logic for hourly sessions
         const elapsedSeconds = Math.floor((currentTime - session.startTime) / 1000);
         const elapsedMinutes = Math.max(0, elapsedSeconds / 60);
-
-        // Contracted time
         const contractedMinutes = session.maxTime;
-
-        // Determine the time to charge for (the greater of elapsed or contracted)
         const minutesToCharge = Math.max(elapsedMinutes, contractedMinutes);
         const hoursToCharge = Math.max(1, Math.ceil(minutesToCharge / 60));
         
-        // Cost calculation
         const childrenCount = session.children.length;
-
-        // Breakdown cost calculation
         const additionalHours = Math.max(0, hoursToCharge - 1);
         const firstHourTotalCost = settings.firstHourRate * childrenCount;
         const additionalHoursTotalCost = additionalHours * settings.additionalHourRate * childrenCount;
         const timeCost = firstHourTotalCost + additionalHoursTotalCost;
         
         const consumptionCost = session.consumption.reduce((acc, item) => acc + item.price * item.quantity, 0);
-
         const subtotal = timeCost + consumptionCost;
         const discount = session.discountApplied || 0;
         const total = Math.max(0, subtotal - discount);
 
-        // Formatting for display
         const elapsedH = Math.floor(elapsedSeconds / 3600);
         const elapsedM = Math.floor((elapsedSeconds % 3600) / 60);
         const elapsedS = elapsedSeconds % 60;
@@ -68,6 +85,7 @@ export function SummaryModal({ session, isOpen, onClose, settings }: SummaryModa
         const formattedContractedTime = `${contractedH.toString().padStart(2, '0')}h ${contractedM.toString().padStart(2, '0')}m`;
 
         return {
+            isFullAfternoon: false,
             timeCost,
             consumptionCost,
             subtotal,
@@ -106,38 +124,52 @@ export function SummaryModal({ session, isOpen, onClose, settings }: SummaryModa
                                 <p className="ml-auto font-mono text-lg font-bold">{formatCurrency(summary.timeCost)}</p>
                             </div>
                             <Separator />
-                             <div className="space-y-2 text-sm">
-                                <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Tempo Contratado</span>
-                                    <span className="font-mono">{summary.formattedContractedTime}</span>
-                                </div>
-                                <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Tempo Decorrido</span>
-                                    <span className="font-mono">{summary.formattedElapsedTime}</span>
-                                </div>
-                                <div className="flex justify-between font-medium">
-                                    <span className="text-muted-foreground">Total a Cobrar</span>
-                                    <span className="font-mono">{summary.hoursToCharge} {summary.hoursToCharge > 1 ? 'horas' : 'hora'}</span>
-                                </div>
-                                
-                                <div className="space-y-1 rounded-md border bg-background/50 p-2 mt-2">
+                            {summary.isFullAfternoon ? (
+                                <div className="space-y-2 text-sm">
                                     <div className="flex justify-between">
-                                        <span className="text-muted-foreground">Valor 1ª Hora</span>
-                                        <span className="font-mono">{formatCurrency(summary.firstHourTotalCost)}</span>
+                                        <span className="text-muted-foreground flex items-center gap-1.5"><Sun className="h-4 w-4"/>Modalidade</span>
+                                        <span className="font-mono font-semibold">Tarde Toda</span>
                                     </div>
-                                    {summary.additionalHours > 0 && (
-                                        <div className="flex justify-between">
-                                            <span className="text-muted-foreground">Horas Adicionais ({summary.additionalHours}h)</span>
-                                            <span className="font-mono">{formatCurrency(summary.additionalHoursTotalCost)}</span>
-                                        </div>
-                                    )}
                                     {summary.childrenCount > 1 && (
                                         <div className="flex justify-end text-xs text-muted-foreground/80 pt-1 border-t">
                                             <span>(Base para {summary.childrenCount} crianças)</span>
                                         </div>
                                     )}
                                 </div>
-                            </div>
+                            ) : (
+                                <div className="space-y-2 text-sm">
+                                    <div className="flex justify-between">
+                                        <span className="text-muted-foreground">Tempo Contratado</span>
+                                        <span className="font-mono">{summary.formattedContractedTime}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-muted-foreground">Tempo Decorrido</span>
+                                        <span className="font-mono">{summary.formattedElapsedTime}</span>
+                                    </div>
+                                    <div className="flex justify-between font-medium">
+                                        <span className="text-muted-foreground">Total a Cobrar</span>
+                                        <span className="font-mono">{summary.hoursToCharge} {summary.hoursToCharge > 1 ? 'horas' : 'hora'}</span>
+                                    </div>
+                                    
+                                    <div className="space-y-1 rounded-md border bg-background/50 p-2 mt-2">
+                                        <div className="flex justify-between">
+                                            <span className="text-muted-foreground">Valor 1ª Hora</span>
+                                            <span className="font-mono">{formatCurrency(summary.firstHourTotalCost)}</span>
+                                        </div>
+                                        {summary.additionalHours > 0 && (
+                                            <div className="flex justify-between">
+                                                <span className="text-muted-foreground">Horas Adicionais ({summary.additionalHours}h)</span>
+                                                <span className="font-mono">{formatCurrency(summary.additionalHoursTotalCost)}</span>
+                                            </div>
+                                        )}
+                                        {summary.childrenCount > 1 && (
+                                            <div className="flex justify-end text-xs text-muted-foreground/80 pt-1 border-t">
+                                                <span>(Base para {summary.childrenCount} crianças)</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         {session && session.consumption.length > 0 && (

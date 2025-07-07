@@ -21,6 +21,7 @@ import {
   PartyPopper,
   Receipt,
   ShoppingCart,
+  Sun,
   Tag,
   Ticket,
 } from 'lucide-react';
@@ -114,18 +115,34 @@ export default function PosPage() {
     const summary = useMemo(() => {
         if (!session || !settings) return null;
 
-        const elapsedSeconds = Math.floor((currentTime - session.startTime) / 1000);
-        const elapsedMinutes = Math.max(0, elapsedSeconds / 60);
-        const contractedMinutes = session.maxTime;
-        const minutesToCharge = Math.max(elapsedMinutes, contractedMinutes);
-        const hoursToCharge = Math.max(1, Math.ceil(minutesToCharge / 60));
-        
+        let timeCost: number;
+        let durationInMinutes: number;
+        let hoursToCharge: number;
+        let firstHourTotalCost: number;
+        let additionalHours: number;
+        let additionalHoursTotalCost: number;
+
         const childrenCount = session.children.length;
-        
-        const additionalHours = Math.max(0, hoursToCharge - 1);
-        const firstHourTotalCost = settings.firstHourRate * childrenCount;
-        const additionalHoursTotalCost = additionalHours * settings.additionalHourRate * childrenCount;
-        const timeCost = firstHourTotalCost + additionalHoursTotalCost;
+
+        if (session.isFullAfternoon) {
+            timeCost = settings.fullAfternoonRate * childrenCount;
+            durationInMinutes = Math.floor((currentTime - session.startTime) / (1000 * 60)); // Still track for records
+            hoursToCharge = 0; // Not applicable
+            firstHourTotalCost = timeCost; // For coupon calculation, the whole amount is the base
+            additionalHours = 0;
+            additionalHoursTotalCost = 0;
+        } else {
+            const elapsedSeconds = Math.floor((currentTime - session.startTime) / 1000);
+            const elapsedMinutes = Math.max(0, elapsedSeconds / 60);
+            const contractedMinutes = session.maxTime;
+            durationInMinutes = Math.max(elapsedMinutes, contractedMinutes);
+            hoursToCharge = Math.max(1, Math.ceil(durationInMinutes / 60));
+            
+            additionalHours = Math.max(0, hoursToCharge - 1);
+            firstHourTotalCost = settings.firstHourRate * childrenCount;
+            additionalHoursTotalCost = additionalHours * settings.additionalHourRate * childrenCount;
+            timeCost = firstHourTotalCost + additionalHoursTotalCost;
+        }
         
         const consumptionCost = session.consumption.reduce((acc, item) => acc + item.price * item.quantity, 0);
         const subtotal = timeCost + consumptionCost;
@@ -135,14 +152,13 @@ export default function PosPage() {
         // A new coupon applied on the POS screen takes precedence.
         if (appliedCoupon) {
             if (appliedCoupon.discountType === 'percentage') {
-                // POS-screen coupon discount is always on the first hour only
-                const firstHourCostForDiscount = settings.firstHourRate * childrenCount;
-                discount = firstHourCostForDiscount * (appliedCoupon.discountValue / 100);
+                const baseForDiscount = session.isFullAfternoon ? timeCost : firstHourTotalCost;
+                discount = baseForDiscount * (appliedCoupon.discountValue / 100);
             } else if (appliedCoupon.discountType === 'fixed') {
                 discount = appliedCoupon.discountValue;
             }
         } 
-        // Otherwise, use the discount from when the session was created. This value is 0 after the first payment.
+        // Otherwise, use the discount from when the session was created.
         else if (session.discountApplied) {
             discount = session.discountApplied;
         }
@@ -158,7 +174,7 @@ export default function PosPage() {
             discount,
             alreadyPaid,
             total, 
-            durationInMinutes: minutesToCharge,
+            durationInMinutes,
             childrenCount,
             hoursToCharge,
             firstHourTotalCost,
@@ -177,7 +193,7 @@ export default function PosPage() {
 
         if (couponForDetails) {
             if (couponForDetails.discountType === 'percentage') {
-                return `Desconto de ${couponForDetails.discountValue}% na 1ª hora (${couponCodeToShow})`;
+                return `Desconto de ${couponForDetails.discountValue}% (${couponCodeToShow})`;
             }
             if (couponForDetails.discountType === 'fixed') {
                 return `Desconto fixo de ${formatCurrency(couponForDetails.discountValue)} (${couponCodeToShow})`;
@@ -266,8 +282,8 @@ export default function PosPage() {
       setIsProcessing(true);
       try {
         const elapsedMinutes = Math.floor((Date.now() - session.startTime) / 1000 / 60);
-        const isOvertime = elapsedMinutes > session.maxTime;
-        const shouldCloseSession = isOvertime;
+        const isOvertime = !session.isFullAfternoon && elapsedMinutes > session.maxTime;
+        const shouldCloseSession = isOvertime || session.isFullAfternoon;
 
         const finalCoupon = appliedCoupon ?? (session.couponCode ? await getCouponByCode(session.couponCode) : null);
 
@@ -433,23 +449,32 @@ export default function PosPage() {
                         <ScrollArea className="h-[calc(100vh-250px)] pr-4">
                             <div className="space-y-4">
                                 <div className="space-y-2">
-                                    <h4 className="font-semibold text-muted-foreground">Custo por Tempo ({summary.hoursToCharge}h)</h4>
+                                    <h4 className="font-semibold text-muted-foreground">Custo por Tempo ({session.isFullAfternoon ? 'Tarde Toda' : `${summary.hoursToCharge}h`})</h4>
                                     <div className="space-y-1 rounded-md border bg-muted/50 p-2 text-sm">
+                                      {session.isFullAfternoon ? (
                                         <div className="flex justify-between">
-                                            <span className="text-muted-foreground">Valor 1ª Hora</span>
-                                            <span className="font-mono">{formatCurrency(summary.firstHourTotalCost)}</span>
+                                            <span className="text-muted-foreground flex items-center gap-1.5"><Sun className="h-4 w-4"/>Valor Tarde Toda</span>
+                                            <span className="font-mono">{formatCurrency(summary.timeCost)}</span>
                                         </div>
-                                        {summary.additionalHours > 0 && (
+                                      ) : (
+                                        <>
                                             <div className="flex justify-between">
-                                                <span className="text-muted-foreground">Horas Adicionais ({summary.additionalHours}h)</span>
-                                                <span className="font-mono">{formatCurrency(summary.additionalHoursTotalCost)}</span>
+                                                <span className="text-muted-foreground">Valor 1ª Hora</span>
+                                                <span className="font-mono">{formatCurrency(summary.firstHourTotalCost)}</span>
                                             </div>
-                                        )}
-                                        {summary.childrenCount > 1 && (
-                                            <div className="flex justify-end text-xs text-muted-foreground/80 pt-1 border-t">
-                                                <span>(Base para {summary.childrenCount} crianças)</span>
-                                            </div>
-                                        )}
+                                            {summary.additionalHours > 0 && (
+                                                <div className="flex justify-between">
+                                                    <span className="text-muted-foreground">Horas Adicionais ({summary.additionalHours}h)</span>
+                                                    <span className="font-mono">{formatCurrency(summary.additionalHoursTotalCost)}</span>
+                                                </div>
+                                            )}
+                                        </>
+                                      )}
+                                      {summary.childrenCount > 1 && (
+                                          <div className="flex justify-end text-xs text-muted-foreground/80 pt-1 border-t">
+                                              <span>(Base para {summary.childrenCount} crianças)</span>
+                                          </div>
+                                      )}
                                     </div>
                                 </div>
                                 <Separator/>

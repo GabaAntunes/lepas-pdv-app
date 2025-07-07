@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Users, AlertCircle, CheckCircle, Timer, ShoppingCart, History, ClipboardList, Plus, Minus, CircleDashed, XCircle, LogOut, Search, Loader2 } from 'lucide-react';
+import { Users, AlertCircle, CheckCircle, Timer, ShoppingCart, History, ClipboardList, Plus, Minus, CircleDashed, XCircle, LogOut, Search, Loader2, Sun } from 'lucide-react';
 import { Progress } from '../ui/progress';
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '../ui/tooltip';
 import {
@@ -14,6 +14,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from '@/components/ui/dialog';
 import { Label } from '../ui/label';
 import { useToast } from '@/hooks/use-toast';
@@ -39,11 +40,11 @@ function CloseSessionDialog({ session, onSessionClosed }: { session: ActiveSessi
 
     const handleClose = async (isError: boolean) => {
         try {
-            await deleteActiveSession(session.id);
+            await deleteActiveSession(session.id, isError);
             onSessionClosed(session.id);
             toast({
                 title: 'Atendimento Encerrado',
-                description: `O atendimento de ${session.responsible} foi ${isError ? 'cancelado' : 'encerrado'}.`,
+                description: `O atendimento de ${session.responsible} foi ${isError ? 'cancelado com devolução de estoque' : 'encerrado'}.`,
             });
         } catch (error) {
             toast({
@@ -99,6 +100,7 @@ interface SessionCardProps {
 
 function SessionCard({ session, settings, onAddTime, onOpenConsumption, onOpenSummary, onOpenHistory, onSessionClosed, isHighlighted = false }: SessionCardProps) {
   const [isAddTimeOpen, setIsAddTimeOpen] = useState(false);
+  const [isInfoOpen, setIsInfoOpen] = useState(false);
   const [hoursToAdd, setHoursToAdd] = useState(1);
   const valorHoraAdicional = settings.additionalHourRate;
 
@@ -111,6 +113,21 @@ function SessionCard({ session, settings, onAddTime, onOpenConsumption, onOpenSu
   const maxTimeInSeconds = maxTimeInMinutes * 60;
 
   const calculateState = useCallback(() => {
+    if (session.isFullAfternoon) {
+        return {
+            formattedTime: "Tarde Toda",
+            progressPercentage: 100,
+            progressColorClass: 'bg-gradient-to-r from-blue-400 to-blue-600',
+            buttonColorClass: 'bg-gradient-to-r from-blue-500 to-sky-600 text-white',
+            textColorClass: 'text-blue-600',
+            icon: <Sun className="h-5 w-5 mr-2" />,
+            timeLabel: 'Período Contratado',
+            buttonText: 'Acertar Conta',
+            hasBalance: !session.isInitialPaymentMade || (consumption && consumption.length > 0),
+            isTimeUp: false,
+        };
+    }
+
     const now = Date.now();
     const elapsedSeconds = Math.floor((now - startTime) / 1000);
     const remainingSeconds = maxTimeInSeconds - elapsedSeconds;
@@ -133,7 +150,7 @@ function SessionCard({ session, settings, onAddTime, onOpenConsumption, onOpenSu
     const hasBalance = !session.isInitialPaymentMade || hasConsumption || isTimeUp;
 
     let progressColorClass = 'bg-gradient-to-r from-green-400 to-green-600';
-    let buttonColorClass = 'bg-green-600 hover:bg-green-700 text-white';
+    let buttonColorClass = 'bg-gradient-to-r from-green-500 to-teal-500 text-white';
     let textColorClass = 'text-green-600';
     let icon = <CheckCircle className="h-5 w-5 mr-2" />;
     let timeLabel = 'Tempo restante';
@@ -141,19 +158,19 @@ function SessionCard({ session, settings, onAddTime, onOpenConsumption, onOpenSu
 
     if (isTimeUp) {
         progressColorClass = 'bg-gradient-to-r from-orange-500 to-red-600';
-        buttonColorClass = 'bg-red-600 hover:bg-red-700 text-white';
+        buttonColorClass = 'bg-gradient-to-r from-orange-500 to-red-600 text-white';
         textColorClass = 'text-red-600';
         icon = <AlertCircle className="h-5 w-5 mr-2" />;
         timeLabel = 'Tempo Esgotado';
         buttonText = 'Acertar Conta (Atrasado)';
     } else if (progressPercentage <= 20) {
         progressColorClass = 'bg-gradient-to-r from-orange-500 to-red-600';
-        buttonColorClass = 'bg-red-600 hover:bg-red-700 text-white';
+        buttonColorClass = 'bg-gradient-to-r from-orange-500 to-red-600 text-white';
         textColorClass = 'text-red-600';
         icon = <AlertCircle className="h-5 w-5 mr-2" />;
     } else if (progressPercentage <= 50) {
         progressColorClass = 'bg-gradient-to-r from-yellow-400 to-orange-500';
-        buttonColorClass = 'bg-yellow-500 hover:bg-yellow-600 text-white';
+        buttonColorClass = 'bg-gradient-to-r from-yellow-400 to-orange-500 text-white';
         textColorClass = 'text-yellow-600';
         icon = <AlertCircle className="h-5 w-5 mr-2" />;
     }
@@ -170,7 +187,7 @@ function SessionCard({ session, settings, onAddTime, onOpenConsumption, onOpenSu
         hasBalance,
         isTimeUp,
     };
-  }, [startTime, maxTimeInSeconds, consumption, session.isInitialPaymentMade]);
+  }, [session, startTime, maxTimeInSeconds, consumption]);
 
   const [timerState, setTimerState] = useState(calculateState());
 
@@ -264,10 +281,35 @@ function SessionCard({ session, settings, onAddTime, onOpenConsumption, onOpenSu
       <CardHeader>
         <div className="flex justify-between items-start">
             <div className="flex-grow pr-2">
-                <CardTitle className="font-headline flex items-center gap-2">
-                    <Users className="h-5 w-5 text-primary" />
-                    {session.responsible}
-                </CardTitle>
+                <Dialog open={isInfoOpen} onOpenChange={setIsInfoOpen}>
+                  <DialogTrigger asChild>
+                    <CardTitle className="font-headline flex items-center gap-2 cursor-pointer hover:underline">
+                        <Users className="h-5 w-5 text-primary" />
+                        {session.responsible}
+                    </CardTitle>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[425px]">
+                      <DialogHeader>
+                          <DialogTitle>Informações do Responsável</DialogTitle>
+                          <DialogDescription>
+                              Dados de contato de {session.responsible}.
+                          </DialogDescription>
+                      </DialogHeader>
+                      <div className="py-4 space-y-4">
+                          <div className="space-y-1">
+                              <Label htmlFor="cpf">CPF</Label>
+                              <Input id="cpf" value={session.responsibleCpf} readOnly />
+                          </div>
+                          <div className="space-y-1">
+                              <Label htmlFor="phone">Telefone</Label>
+                              <Input id="phone" value={session.responsiblePhone || 'Não informado'} readOnly />
+                          </div>
+                      </div>
+                      <DialogFooter>
+                          <Button onClick={() => setIsInfoOpen(false)}>Fechar</Button>
+                      </DialogFooter>
+                  </DialogContent>
+                </Dialog>
                 <CardDescription>{session.children.join(', ')}</CardDescription>
             </div>
             <CloseSessionDialog session={session} onSessionClosed={onSessionClosed} />
@@ -290,13 +332,13 @@ function SessionCard({ session, settings, onAddTime, onOpenConsumption, onOpenSu
             <Dialog open={isAddTimeOpen} onOpenChange={setIsAddTimeOpen}>
               <Tooltip>
                   <TooltipTrigger asChild>
-                     <Button variant="ghost" size="icon" onClick={openDialog}>
+                     <Button variant="ghost" size="icon" onClick={openDialog} disabled={session.isFullAfternoon}>
                         <Timer className="h-5 w-5" />
                         <span className="sr-only">Adicionar Tempo</span>
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>
-                      <p>Adicionar Tempo</p>
+                      {session.isFullAfternoon ? <p>Não é possível adicionar tempo</p> : <p>Adicionar Tempo</p>}
                   </TooltipContent>
               </Tooltip>
               <DialogContent className="sm:max-w-[425px]">
@@ -457,6 +499,7 @@ export function ActiveSessions() {
   
   const sortedAndFilteredSessions = useMemo(() => {
     const calculateRemainingTime = (session: ActiveSession) => {
+        if (session.isFullAfternoon) return Infinity; // Put full afternoon sessions at the end
         const endTime = session.startTime + session.maxTime * 60 * 1000;
         return endTime - Date.now();
     };

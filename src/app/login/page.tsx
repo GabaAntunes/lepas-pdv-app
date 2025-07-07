@@ -30,7 +30,7 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <div className="w-full max-w-md space-y-6">
         <div className="flex justify-center">
-          <Logo size={80} />
+          <Logo />
         </div>
         <Card>
           <CardHeader className="text-center">

@@ -4,6 +4,7 @@ export interface Product {
   name: string;
   price: number;
   stock: number;
+  minStock?: number;
 }
 
 export interface ConsumptionItem {
@@ -32,6 +33,7 @@ export interface ActiveSession {
   children: string[];
   startTime: number; // JS Timestamp
   maxTime: number; // in minutes
+  isFullAfternoon?: boolean;
   consumption: ConsumptionItem[];
   couponCode?: string;
   couponId?: string; // Store the ID for easier updates
@@ -68,6 +70,7 @@ export interface Settings {
   id?: string;
   firstHourRate: number;
   additionalHourRate: number;
+  fullAfternoonRate: number;
   logoUrl?: string;
 }
 
@@ -97,4 +100,13 @@ export interface CashSession {
   expectedCashAmount?: number;
   difference?: number;
   finalCashSales?: number;
+}
+
+export interface AppNotification {
+  id: string;
+  type: 'stock';
+  message: string;
+  entityId: string; // The product ID
+  createdAt: number; // JS Timestamp
+  link: string;
 }

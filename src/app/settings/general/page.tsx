@@ -27,6 +27,7 @@ const formatCurrencyForDisplay = (value: number | string | undefined | null): st
 const formSchema = z.object({
   firstHourRate: z.coerce.number().positive({ message: "O valor deve ser positivo." }),
   additionalHourRate: z.coerce.number().positive({ message: "O valor deve ser positivo." }),
+  fullAfternoonRate: z.coerce.number().positive({ message: "O valor deve ser positivo." }),
 });
 
 export default function GeneralSettingsPage() {
@@ -42,6 +43,7 @@ export default function GeneralSettingsPage() {
     defaultValues: {
       firstHourRate: 30.00,
       additionalHourRate: 15.00,
+      fullAfternoonRate: 50.00,
     },
   });
   
@@ -53,6 +55,7 @@ export default function GeneralSettingsPage() {
         form.reset({
             firstHourRate: settings.firstHourRate,
             additionalHourRate: settings.additionalHourRate,
+            fullAfternoonRate: settings.fullAfternoonRate,
         });
         if (settings.logoUrl) {
           setLogoPreview(settings.logoUrl);
@@ -120,8 +123,9 @@ export default function GeneralSettingsPage() {
               <CardContent className="space-y-8">
                 {fetching ? (
                   <div className="space-y-8">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                       <div className="space-y-2"><Skeleton className="h-5 w-32" /><Skeleton className="h-10 w-full" /></div>
+                      <div className="space-y-2"><Skeleton className="h-5 w-40" /><Skeleton className="h-10 w-full" /></div>
                       <div className="space-y-2"><Skeleton className="h-5 w-40" /><Skeleton className="h-10 w-full" /></div>
                     </div>
                     <div className="space-y-2">
@@ -137,7 +141,7 @@ export default function GeneralSettingsPage() {
                   </div>
                 ) : (
                   <>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                       <FormField
                         control={form.control}
                         name="firstHourRate"
@@ -168,6 +172,26 @@ export default function GeneralSettingsPage() {
                               <Input
                                 type="text"
                                 placeholder="R$ 15,00"
+                                onFocus={() => setFocusedField(field.name)}
+                                onBlur={() => { field.onBlur(); setFocusedField(null); }}
+                                value={focusedField === field.name ? (field.value || '') : formatCurrencyForDisplay(field.value)}
+                                onChange={(e) => field.onChange(e.target.value.replace(',', '.'))}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="fullAfternoonRate"
+                        render={({ field }) => (
+                          <FormItem>
+                            <Label>Valor Tarde Toda</Label>
+                            <FormControl>
+                              <Input
+                                type="text"
+                                placeholder="R$ 50,00"
                                 onFocus={() => setFocusedField(field.name)}
                                 onBlur={() => { field.onBlur(); setFocusedField(null); }}
                                 value={focusedField === field.name ? (field.value || '') : formatCurrencyForDisplay(field.value)}

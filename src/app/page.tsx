@@ -212,13 +212,15 @@ export default function HomePage() {
                   <div className="divide-y divide-border -mx-6">
                   {loading ? (
                       Array.from({ length: 3 }).map((_, idx) => (
-                          <div key={idx} className="flex items-center py-4 first:pt-0 last:pb-0 px-6">
-                              <Skeleton className="h-9 w-9 rounded-full" />
-                              <div className="ml-4 space-y-2">
-                                  <Skeleton className="h-4 w-[150px]" />
-                                  <Skeleton className="h-3 w-[100px]" />
+                          <div key={idx} className="flex items-center py-4 first:pt-0 last:pb-0 px-6 gap-4">
+                              <Skeleton className="h-10 w-10 rounded-full" />
+                              <div className="flex-1 space-y-2">
+                                  <div className="flex justify-between items-baseline">
+                                      <Skeleton className="h-4 w-[120px]" />
+                                      <Skeleton className="h-4 w-[70px]" />
+                                  </div>
+                                  <Skeleton className="h-1.5 w-full" />
                               </div>
-                              <Skeleton className="ml-auto h-5 w-20" />
                           </div>
                       ))
                   ) : sortedActiveSessions.length === 0 ? (

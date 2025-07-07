@@ -8,7 +8,7 @@ import { Input } from "../ui/input";
 import { Separator } from "../ui/separator";
 import { ScrollArea } from "../ui/scroll-area";
 import { Product, ConsumptionItem, ActiveSession } from "@/types";
-import { getProducts } from "@/services/productService";
+import { getProducts, updateProductStock } from "@/services/productService";
 import { updateSessionConsumption } from "@/services/activeSessionService";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Minus, Plus, Search, ShoppingBag, Trash2 } from "lucide-react";
@@ -27,11 +27,12 @@ interface ConsumptionModalProps {
 
 export function ConsumptionModal({ session, isOpen, onClose }: ConsumptionModalProps) {
     const { toast } = useToast();
-    const [allProducts, setAllProducts] = useState<Product[]>([]);
+    const [masterProducts, setMasterProducts] = useState<Product[]>([]);
     const [comanda, setComanda] = useState<ConsumptionItem[]>([]);
     const [filter, setFilter] = useState("");
     const [isSaving, setIsSaving] = useState(false);
     const [isLoadingProducts, setIsLoadingProducts] = useState(true);
+    const [isUpdatingItem, setIsUpdatingItem] = useState<string | null>(null);
 
     useEffect(() => {
         async function fetchProducts() {
@@ -39,7 +40,7 @@ export function ConsumptionModal({ session, isOpen, onClose }: ConsumptionModalP
             setIsLoadingProducts(true);
             try {
                 const productsData = await getProducts();
-                setAllProducts(productsData);
+                setMasterProducts(productsData);
             } catch (error) {
                 toast({ variant: "destructive", title: "Erro ao carregar produtos" });
             } finally {
@@ -47,68 +48,87 @@ export function ConsumptionModal({ session, isOpen, onClose }: ConsumptionModalP
             }
         }
         fetchProducts();
-    }, [isOpen]);
-
+    }, [isOpen, toast]);
+    
     useEffect(() => {
         if (session) {
             setComanda(session.consumption ? JSON.parse(JSON.stringify(session.consumption)) : []);
         }
     }, [session]);
     
-    const filteredProducts = useMemo(() => {
-        return allProducts.filter(p => p.name.toLowerCase().includes(filter.toLowerCase()));
-    }, [allProducts, filter]);
+    const availableProducts = useMemo(() => {
+        if (!masterProducts.length) return [];
+        return masterProducts.filter(p => 
+            p.name.toLowerCase().includes(filter.toLowerCase())
+        );
+    }, [masterProducts, filter]);
 
     const subtotal = useMemo(() => {
         return comanda.reduce((acc, item) => acc + item.price * item.quantity, 0);
     }, [comanda]);
 
-    const handleAddItem = (product: Product) => {
-        const existingItem = comanda.find(item => item.productId === product.id);
+    const handleUpdateQuantity = async (productId: string, change: 1 | -1) => {
+        if (isUpdatingItem) return;
+        setIsUpdatingItem(productId);
 
-        if (existingItem) {
-             if (product.stock <= existingItem.quantity) {
-                toast({ variant: "destructive", title: "Estoque insuficiente", description: `Não há mais ${product.name} em estoque.` });
+        try {
+            const masterProduct = masterProducts.find(p => p.id === productId);
+            if (!masterProduct) throw new Error("Produto não encontrado.");
+
+            if (change === 1 && masterProduct.stock <= 0) {
+                toast({ variant: "destructive", title: "Estoque esgotado", description: `Não há mais "${masterProduct.name}" em estoque.` });
                 return;
             }
-            setComanda(comanda.map(item =>
-                item.productId === product.id ? { ...item, quantity: item.quantity + 1 } : item
-            ));
-        } else {
-             if (product.stock < 1) {
-                toast({ variant: "destructive", title: "Estoque insuficiente", description: `Não há mais ${product.name} em estoque.` });
-                return;
+
+            await updateProductStock(productId, -change);
+
+            setMasterProducts(prev => prev.map(p => p.id === productId ? { ...p, stock: p.stock - change } : p));
+            
+            const itemInComanda = comanda.find(item => item.productId === productId);
+            const newQuantity = (itemInComanda?.quantity || 0) + change;
+
+            if (newQuantity <= 0) {
+                setComanda(prev => prev.filter(item => item.productId !== productId));
+            } else {
+                if (itemInComanda) {
+                    setComanda(prev => prev.map(item =>
+                        item.productId === productId ? { ...item, quantity: newQuantity } : item
+                    ));
+                } else {
+                    setComanda(prev => [...prev, {
+                        productId: masterProduct.id,
+                        name: masterProduct.name,
+                        price: masterProduct.price,
+                        quantity: 1,
+                    }]);
+                }
             }
-            setComanda([...comanda, {
-                productId: product.id,
-                name: product.name,
-                price: product.price,
-                quantity: 1,
-            }]);
+        } catch (error) {
+            console.error(error);
+            toast({ variant: "destructive", title: "Erro ao atualizar o estoque do produto." });
+        } finally {
+            setIsUpdatingItem(null);
         }
     };
 
-    const handleUpdateQuantity = (productId: string, change: 1 | -1) => {
-        const itemInComanda = comanda.find(item => item.productId === productId);
-        if (!itemInComanda) return;
-        
-        const productInStock = allProducts.find(p => p.id === productId);
-        if (change === 1 && productInStock && productInStock.stock <= itemInComanda.quantity) {
-             toast({ variant: "destructive", title: "Estoque insuficiente", description: `Não há mais ${productInStock.name} em estoque.` });
-             return;
-        }
+    const handleRemoveItem = async (productId: string) => {
+        if (isUpdatingItem) return;
+        setIsUpdatingItem(productId);
 
-        if (itemInComanda.quantity + change === 0) {
-            handleRemoveItem(productId);
-        } else {
-            setComanda(comanda.map(item =>
-                item.productId === productId ? { ...item, quantity: item.quantity + change } : item
-            ));
-        }
-    };
+        try {
+            const itemInComanda = comanda.find(item => item.productId === productId);
+            if (!itemInComanda) return;
 
-    const handleRemoveItem = (productId: string) => {
-        setComanda(comanda.filter(item => item.productId !== productId));
+            await updateProductStock(productId, itemInComanda.quantity);
+
+            setMasterProducts(prev => prev.map(p => p.id === productId ? { ...p, stock: p.stock + itemInComanda.quantity } : p));
+            setComanda(prev => prev.filter(item => item.productId !== productId));
+        } catch (error) {
+            console.error(error);
+            toast({ variant: "destructive", title: "Erro ao devolver produto ao estoque." });
+        } finally {
+            setIsUpdatingItem(null);
+        }
     };
 
     const handleConfirm = async () => {
@@ -127,23 +147,24 @@ export function ConsumptionModal({ session, isOpen, onClose }: ConsumptionModalP
     };
 
     const handleClose = () => {
-        if(isSaving) return;
+        if(isSaving || isUpdatingItem) return;
         onClose();
     }
 
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
-            <DialogContent className="max-w-4xl h-[80vh] flex flex-col p-0" onPointerDownOutside={(e) => isSaving && e.preventDefault()}>
+            <DialogContent className="max-w-4xl h-[80vh] flex flex-col p-0" onPointerDownOutside={(e) => (isSaving || !!isUpdatingItem) && e.preventDefault()}>
                 <DialogHeader className="p-6 pb-0">
                     <DialogTitle className="font-headline text-2xl">Gerenciar Consumo</DialogTitle>
-                    <DialogDescription>
-                        Adicione ou remova produtos da comanda de <span className="font-semibold text-foreground">{session?.responsible}</span>.
+                    <DialogDescription className="flex flex-wrap items-baseline gap-x-1">
+                        <span>Adicione ou remova produtos da comanda de</span>
+                        <span className="font-semibold text-foreground">{session?.responsible}.</span>
                     </DialogDescription>
                 </DialogHeader>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 px-6 min-h-0 flex-grow">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 px-6 min-h-0 flex-grow overflow-hidden">
                     {/* Left Panel: Product List */}
-                    <div className="flex flex-col border rounded-lg">
+                    <div className="flex flex-col border rounded-lg overflow-hidden">
                         <div className="p-4 border-b">
                             <div className="relative">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -164,21 +185,21 @@ export function ConsumptionModal({ session, isOpen, onClose }: ConsumptionModalP
                                             <Skeleton className="h-5 w-1/5" />
                                         </div>
                                     ))
-                                ) : filteredProducts.map(product => (
+                                ) : availableProducts.map(product => (
                                     <button 
                                         key={product.id}
-                                        onClick={() => handleAddItem(product)}
-                                        disabled={product.stock === 0}
+                                        onClick={() => handleUpdateQuantity(product.id, 1)}
+                                        disabled={product.stock <= 0 || !!isUpdatingItem}
                                         className={cn(
                                             "w-full flex justify-between items-center p-2 rounded-lg text-left transition-colors",
                                             product.stock > 0 ? "hover:bg-muted" : "opacity-50 cursor-not-allowed"
                                         )}
                                     >
-                                        <div>
-                                            <p className="font-medium">{product.name}</p>
+                                        <div className="flex-grow min-w-0 pr-2">
+                                            <p className="font-medium truncate">{product.name}</p>
                                             <p className="text-xs text-muted-foreground">Estoque: {product.stock}</p>
                                         </div>
-                                        <p className="font-semibold">{formatCurrency(product.price)}</p>
+                                        <p className="font-semibold shrink-0">{formatCurrency(product.price)}</p>
                                     </button>
                                 ))}
                             </div>
@@ -186,7 +207,7 @@ export function ConsumptionModal({ session, isOpen, onClose }: ConsumptionModalP
                     </div>
 
                     {/* Right Panel: Current Order */}
-                    <div className="flex flex-col border rounded-lg bg-muted/30">
+                    <div className="flex flex-col border rounded-lg bg-muted/30 overflow-hidden">
                         <div className="p-4 border-b">
                             <h3 className="font-semibold text-lg flex items-center gap-2"><ShoppingBag className="h-5 w-5"/>Comanda Atual</h3>
                         </div>
@@ -199,20 +220,20 @@ export function ConsumptionModal({ session, isOpen, onClose }: ConsumptionModalP
                                 </div>
                             ) : comanda.map(item => (
                                 <div key={item.productId} className="flex items-center gap-4 bg-background p-2 rounded-md shadow-sm">
-                                    <div className="flex-grow">
-                                        <p className="font-medium">{item.name}</p>
+                                    <div className="flex-grow min-w-0">
+                                        <p className="font-medium truncate">{item.name}</p>
                                         <p className="text-sm font-mono">{formatCurrency(item.price * item.quantity)}</p>
                                     </div>
                                     <div className="flex items-center gap-2 border rounded-md">
-                                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleUpdateQuantity(item.productId, -1)}>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleUpdateQuantity(item.productId, -1)} disabled={isUpdatingItem === item.productId || !!isUpdatingItem}>
                                             <Minus className="h-4 w-4" />
                                         </Button>
-                                        <span className="font-bold w-4 text-center">{item.quantity}</span>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleUpdateQuantity(item.productId, 1)}>
+                                        <span className="font-bold w-4 text-center">{isUpdatingItem === item.productId ? <Loader2 className="h-4 w-4 animate-spin mx-auto"/> : item.quantity}</span>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleUpdateQuantity(item.productId, 1)} disabled={isUpdatingItem === item.productId || !!isUpdatingItem}>
                                             <Plus className="h-4 w-4" />
                                         </Button>
                                     </div>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => handleRemoveItem(item.productId)}>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => handleRemoveItem(item.productId)} disabled={isUpdatingItem === item.productId || !!isUpdatingItem}>
                                         <Trash2 className="h-4 w-4" />
                                     </Button>
                                 </div>
@@ -230,8 +251,8 @@ export function ConsumptionModal({ session, isOpen, onClose }: ConsumptionModalP
                 </div>
 
                 <DialogFooter className="p-6 pt-4 border-t">
-                    <Button variant="outline" onClick={handleClose} disabled={isSaving}>Cancelar</Button>
-                    <Button onClick={handleConfirm} disabled={isSaving}>
+                    <Button variant="outline" onClick={handleClose} disabled={isSaving || !!isUpdatingItem}>Cancelar</Button>
+                    <Button onClick={handleConfirm} disabled={isSaving || !!isUpdatingItem}>
                         {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         Confirmar
                     </Button>

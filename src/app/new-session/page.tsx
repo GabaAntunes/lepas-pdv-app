@@ -18,6 +18,8 @@ import { Separator } from '@/components/ui/separator';
 import { Coupon, Settings } from '@/types';
 import { getCouponByCode } from '@/services/couponService';
 import { getSettings } from '@/services/settingsService';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { cn } from '@/lib/utils';
 
 const formSchema = z.object({
   responsible: z.string().min(3, { message: 'O nome do responsável deve ter pelo menos 3 caracteres.' }),
@@ -53,6 +55,7 @@ const formatPhone = (value: string) => {
 
 export default function NewSessionPage() {
   const [loading, setLoading] = useState(false);
+  const [sessionType, setSessionType] = useState<'hourly' | 'fullAfternoon'>('hourly');
   const [contractedHours, setContractedHours] = useState(1);
   const [totalPrice, setTotalPrice] = useState(0);
   const [discount, setDiscount] = useState(0);
@@ -94,12 +97,13 @@ export default function NewSessionPage() {
   }, [contractedHours]);
 
   const totalDurationString = useMemo(() => {
-      const hours = Math.floor(totalMinutes / 60);
-      const minutes = totalMinutes % 60;
-      return `${hours}h ${minutes.toString().padStart(2, '0')}m`;
-  }, [totalMinutes]);
+    if (sessionType === 'fullAfternoon') return "Tarde Toda";
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = totalMinutes % 60;
+    return `${hours}h ${minutes.toString().padStart(2, '0')}m`;
+  }, [totalMinutes, sessionType]);
 
-  // Consolidated effect for all price calculations
+  // Price calculation
   useEffect(() => {
     if (!settings || childrenCount <= 0) {
       setBasePrice(0);
@@ -108,23 +112,28 @@ export default function NewSessionPage() {
       return;
     }
 
-    // 1. Calculate base price based on contracted hours
-    const basePriceForFirstHour = settings.firstHourRate * childrenCount;
-    const basePriceForAdditionalHours = (Math.max(0, contractedHours - 1)) * settings.additionalHourRate * childrenCount;
-    const newBasePrice = basePriceForFirstHour + basePriceForAdditionalHours;
+    let newBasePrice = 0;
+    let priceForCouponCalc = 0;
+
+    if (sessionType === 'hourly') {
+        priceForCouponCalc = settings.firstHourRate * childrenCount;
+        const additionalHoursPrice = (Math.max(0, contractedHours - 1)) * settings.additionalHourRate * childrenCount;
+        newBasePrice = priceForCouponCalc + additionalHoursPrice;
+    } else { // fullAfternoon
+        newBasePrice = settings.fullAfternoonRate * childrenCount;
+        priceForCouponCalc = newBasePrice;
+    }
     setBasePrice(newBasePrice);
     
-    // 2. Calculate discount based on applied coupon. Discount only applies to the first hour.
+    // Calculate discount based on applied coupon.
     let newDiscount = 0;
     if (appliedCoupon) {
       if (appliedCoupon.discountType === 'percentage') {
-        newDiscount = basePriceForFirstHour * (appliedCoupon.discountValue / 100);
+        newDiscount = priceForCouponCalc * (appliedCoupon.discountValue / 100);
       } else if (appliedCoupon.discountType === 'fixed') {
         newDiscount = appliedCoupon.discountValue;
       } else if (appliedCoupon.discountType === 'freeTime') {
-        // FreeTime coupons are only valid for 1 contracted hour.
-        // The other useEffect will remove the coupon if hours > 1, so discount will become 0.
-        if (contractedHours === 1) {
+        if (sessionType === 'hourly' && contractedHours === 1) {
           const costPerMinute = settings.firstHourRate / 60;
           const discountFromTime = costPerMinute * appliedCoupon.discountValue;
           const discountPerChild = Math.min(discountFromTime, settings.firstHourRate);
@@ -134,36 +143,45 @@ export default function NewSessionPage() {
     }
     setDiscount(newDiscount);
 
-    // 3. Calculate final total price
+    // Final total price
     setTotalPrice(Math.max(0, newBasePrice - newDiscount));
-  }, [contractedHours, childrenCount, settings, appliedCoupon]);
+  }, [contractedHours, childrenCount, settings, appliedCoupon, sessionType]);
 
 
+  // Coupon validation effect
   useEffect(() => {
-    if (appliedCoupon?.discountType === 'freeTime' && contractedHours > 1) {
+    const isFreeTimeAndNotApplicable = appliedCoupon?.discountType === 'freeTime' && (contractedHours > 1 || sessionType === 'fullAfternoon');
+    
+    if (isFreeTimeAndNotApplicable) {
       toast({
         variant: 'destructive',
         title: 'Cupom de Tempo Inválido',
-        description: 'Cupons de tempo grátis são válidos apenas para a contratação de 1 hora. O cupom foi removido.',
+        description: sessionType === 'fullAfternoon'
+          ? 'Cupons de tempo grátis não são válidos para a contratação da Tarde Toda.'
+          : 'Cupons de tempo grátis são válidos apenas para a contratação de 1 hora.',
       });
       setAppliedCoupon(null);
       form.setValue('coupon', '');
     }
-  }, [contractedHours, appliedCoupon, form, toast]);
+  }, [contractedHours, sessionType, appliedCoupon, form, toast]);
 
 
   const handleApplyCoupon = async () => {
     if (!couponCode) return;
     setIsLoadingCoupon(true);
-    setAppliedCoupon(null); // Reset previous coupon
+    setAppliedCoupon(null);
     try {
       const coupon = await getCouponByCode(couponCode);
       if (coupon && coupon.status === 'active') {
-        if (coupon.discountType === 'freeTime' && contractedHours > 1) {
+        const isFreeTimeAndNotApplicable = coupon.discountType === 'freeTime' && (contractedHours > 1 || sessionType === 'fullAfternoon');
+        
+        if (isFreeTimeAndNotApplicable) {
           toast({
             variant: 'destructive',
             title: 'Cupom não aplicável',
-            description: 'Cupons de tempo grátis só podem ser aplicados na contratação de 1 hora.',
+            description: sessionType === 'fullAfternoon'
+              ? 'Cupons de tempo só podem ser aplicados na contratação por hora.'
+              : 'Cupons de tempo grátis só podem ser aplicados na contratação de 1 hora.',
           });
           form.setValue('coupon', '');
         } else {
@@ -172,7 +190,7 @@ export default function NewSessionPage() {
           if (coupon.discountType === 'fixed') {
               description = `Desconto de ${formatCurrency(coupon.discountValue)} aplicado.`;
           } else if (coupon.discountType === 'percentage') {
-              description = `Desconto de ${coupon.discountValue}% aplicado na primeira hora.`;
+              description = `Desconto de ${coupon.discountValue}% aplicado.`;
           } else if (coupon.discountType === 'freeTime') {
               description = `Desconto de ${coupon.discountValue} minutos aplicado na primeira hora.`;
           }
@@ -198,11 +216,15 @@ export default function NewSessionPage() {
         return;
       }
       
+      const isFullAfternoon = sessionType === 'fullAfternoon';
+      const timeInMinutes = isFullAfternoon ? 9999 : totalMinutes; // 9999 is a sentinel value for "unlimited"
+
       await addActiveSession({
         responsible: values.responsible,
         responsibleCpf: values.cpf,
         children: childrenArray,
-        maxTime: totalMinutes,
+        maxTime: timeInMinutes,
+        isFullAfternoon,
         ...(values.phone && { responsiblePhone: values.phone }),
         ...(appliedCoupon && { couponCode: appliedCoupon.code, couponId: appliedCoupon.id }),
         ...(discount > 0 && { discountApplied: discount }),
@@ -225,9 +247,14 @@ export default function NewSessionPage() {
     }
   }
 
-  const pricePerChild = settings && contractedHours >= 1
-    ? settings.firstHourRate + (contractedHours - 1) * settings.additionalHourRate
-    : 0;
+  const pricePerChild = useMemo(() => {
+    if (!settings) return 0;
+    if (sessionType === 'fullAfternoon') return settings.fullAfternoonRate;
+    if (contractedHours >= 1) {
+        return settings.firstHourRate + (contractedHours - 1) * settings.additionalHourRate;
+    }
+    return 0;
+  }, [settings, sessionType, contractedHours]);
 
   return (
     <MainLayout>
@@ -316,7 +343,14 @@ export default function NewSessionPage() {
 
                   {/* Coluna Esquerda */}
                   <div className="space-y-6">
-                    <div className="space-y-3">
+                    <Tabs defaultValue="hourly" onValueChange={(value) => setSessionType(value as any)} className="w-full">
+                      <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value="hourly">Por Hora</TabsTrigger>
+                        <TabsTrigger value="fullAfternoon">Tarde Toda</TabsTrigger>
+                      </TabsList>
+                    </Tabs>
+
+                    <div className={cn("space-y-3 transition-opacity", sessionType === 'fullAfternoon' && "opacity-50 pointer-events-none")}>
                       <FormLabel>Tempo Contratado</FormLabel>
                       <div className="flex items-center justify-center gap-8 py-4 border rounded-lg">
                         <Button variant="outline" size="icon" type="button" onClick={() => setContractedHours(h => Math.max(1, h - 1))} className="h-12 w-12 rounded-full">
@@ -394,7 +428,7 @@ export default function NewSessionPage() {
                       <h4 className="font-semibold text-center">Detalhes do Contrato</h4>
                       <Separator />
                       <div className="flex justify-between font-bold">
-                        <span className="text-muted-foreground">Tempo Total da Sessão:</span>
+                        <span className="text-muted-foreground">Tempo da Sessão:</span>
                         <span className="font-medium">{totalDurationString}</span>
                       </div>
                       <div className="flex justify-between">
