@@ -41,6 +41,7 @@ export interface ActiveSession {
   isInitialPaymentMade?: boolean;
   totalPaidSoFar?: number;
   isCouponUsageCounted?: boolean;
+  timeUpNotificationSent?: boolean;
 }
 
 export interface Payment {
