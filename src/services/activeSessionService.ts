@@ -1,7 +1,7 @@
 
 import { db, isFirebaseConfigured } from '@/lib/firebase';
 import type { ActiveSession, ConsumptionItem } from '@/types';
-import { collection, onSnapshot, updateDoc, doc, Unsubscribe, query, orderBy, Timestamp, addDoc, getDoc, deleteDoc, writeBatch, increment } from 'firebase/firestore';
+import { collection, onSnapshot, updateDoc, doc, Unsubscribe, query, orderBy, Timestamp, addDoc, getDoc, deleteDoc, writeBatch, increment, QueryDocumentSnapshot, DocumentData, DocumentSnapshot } from 'firebase/firestore';
 
 const docToActiveSession = (doc: QueryDocumentSnapshot<DocumentData> | DocumentSnapshot<DocumentData>): ActiveSession => {
     const data = doc.data();
@@ -25,6 +25,7 @@ const docToActiveSession = (doc: QueryDocumentSnapshot<DocumentData> | DocumentS
         isInitialPaymentMade: data.isInitialPaymentMade ?? false,
         totalPaidSoFar: data.totalPaidSoFar || 0,
         isCouponUsageCounted: data.isCouponUsageCounted ?? false,
+        timeUpNotificationSent: data.timeUpNotificationSent ?? false,
     } as ActiveSession;
 };
 
@@ -75,6 +76,7 @@ export const addActiveSession = async (sessionData: {
       isInitialPaymentMade: false,
       totalPaidSoFar: 0,
       isCouponUsageCounted: false,
+      timeUpNotificationSent: false,
       isFullAfternoon: sessionData.isFullAfternoon ?? false,
     }
 
