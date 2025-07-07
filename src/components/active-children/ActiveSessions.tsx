@@ -20,6 +20,7 @@ import { Label } from '../ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { ActiveSession, Settings } from '@/types';
 import { listenToActiveSessions, addTimeToSession, deleteActiveSession } from '@/services/activeSessionService';
+import { addTimeUpNotification } from '@/services/notificationService';
 import { getOpenCashSession } from '@/services/cashRegisterService';
 import { getSettings } from '@/services/settingsService';
 import { ConsumptionModal } from './ConsumptionModal';
@@ -104,7 +105,6 @@ function SessionCard({ session, settings, onAddTime, onOpenConsumption, onOpenSu
   const [hoursToAdd, setHoursToAdd] = useState(1);
   const valorHoraAdicional = settings.additionalHourRate;
 
-  const { toast } = useToast();
   const router = useRouter();
   const [isRedirecting, setIsRedirecting] = useState(false);
   const [notificationSent, setNotificationSent] = useState(false);
@@ -200,19 +200,21 @@ function SessionCard({ session, settings, onAddTime, onOpenConsumption, onOpenSu
 
   useEffect(() => {
     if (timerState.isTimeUp && !notificationSent) {
-      toast({
-        title: "Tempo Esgotado!",
-        description: `O tempo para ${session.responsible} (${session.children.join(", ")}) acabou.`,
-        variant: "destructive",
-        duration: 30000,
-      });
-      setNotificationSent(true);
+      (async () => {
+        try {
+          await addTimeUpNotification(session);
+          setNotificationSent(true);
+        } catch (error) {
+          console.error("Failed to send time up notification:", error);
+        }
+      })();
     }
-  }, [timerState.isTimeUp, notificationSent, session, toast]);
+  }, [timerState.isTimeUp, notificationSent, session]);
 
   const handleSettleAccountClick = async () => {
     setIsRedirecting(true);
     try {
+        const { toast } = await import('@/hooks/use-toast');
         const cashSession = await getOpenCashSession();
         if (cashSession) {
             router.push(`/pos/${session.id}`);
@@ -226,6 +228,7 @@ function SessionCard({ session, settings, onAddTime, onOpenConsumption, onOpenSu
             router.push(`/settings/cash-register?redirect=${encodeURIComponent(`/pos/${session.id}`)}`);
         }
     } catch (error) {
+        const { toast } = await import('@/hooks/use-toast');
         console.error("Failed to check cash register status:", error);
         toast({
             title: "Erro ao verificar o caixa",
