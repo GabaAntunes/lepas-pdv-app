@@ -213,11 +213,11 @@ const ReportsPageContent = () => {
                 {dateRange?.from ? (
                 dateRange.to ? (
                     <>
-                    {format(dateRange.from, "LLL dd, y", { locale: ptBR })} -{" "}
-                    {format(dateRange.to, "LLL dd, y", { locale: ptBR })}
+                    {format(dateRange.from, "dd/MM/yy", { locale: ptBR })} -{" "}
+                    {format(dateRange.to, "dd/MM/yy", { locale: ptBR })}
                     </>
                 ) : (
-                    format(dateRange.from, "LLL dd, y", { locale: ptBR })
+                    format(dateRange.from, "dd/MM/yy", { locale: ptBR })
                 )
                 ) : (
                 <span>Escolha uma data</span>
