@@ -59,12 +59,10 @@ export const addStockNotification = async (product: Product) => {
 export const addTimeUpNotification = async (session: ActiveSession) => {
     if (!isFirebaseConfigured || !db) throw new Error("Firebase is not configured.");
 
-    const q = query(notificationsCollectionRef, where("entityId", "==", session.id), where("type", "==", "timeUp"));
-    const existing = await getDocs(q);
-    if (!existing.empty) {
-        return; // Notification for this session already exists
-    }
+    const batch = writeBatch(db);
 
+    // 1. Create the notification document
+    const notificationRef = doc(collection(db, 'notifications'));
     const newNotification: Omit<AppNotification, 'id'> = {
         type: 'timeUp',
         message: `O tempo para ${session.responsible} (${session.children.join(", ")}) acabou.`,
@@ -72,8 +70,13 @@ export const addTimeUpNotification = async (session: ActiveSession) => {
         createdAt: Timestamp.now(),
         link: `/active-children?highlight=${session.id}`
     };
+    batch.set(notificationRef, newNotification as any);
 
-    await addDoc(notificationsCollectionRef, newNotification as any);
+    // 2. Mark the session to prevent sending more notifications for this event
+    const sessionRef = doc(db, 'atendimentos_ativos', session.id);
+    batch.update(sessionRef, { timeUpNotificationSent: true });
+
+    await batch.commit();
 };
 
 
